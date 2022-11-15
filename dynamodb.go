@@ -25,7 +25,7 @@ type DDBSortKeyConstraint interface {
 
 type DDBPrimaryKey[P DDBPartitionKeyConstraint, S DDBSortKeyConstraint] struct {
 	PartitionKey string
-	RangeKey     string
+	SortKey      string
 }
 
 func (pk *DDBPrimaryKey[P, S]) AttributeValue(p P, s S) map[string]*dynamodb.AttributeValue {
@@ -44,16 +44,16 @@ func (pk *DDBPrimaryKey[P, S]) AttributeValue(p P, s S) map[string]*dynamodb.Att
 		return attrs
 	}
 
-	if pk.RangeKey == "" {
-		panic("no range key specified")
+	if pk.SortKey == "" {
+		panic("sort key is not defined")
 	}
 
 	if str, ok := any(s).(string); ok {
-		attrs[pk.RangeKey] = &dynamodb.AttributeValue{
+		attrs[pk.SortKey] = &dynamodb.AttributeValue{
 			S: aws.String(str),
 		}
 	} else {
-		attrs[pk.RangeKey] = &dynamodb.AttributeValue{
+		attrs[pk.SortKey] = &dynamodb.AttributeValue{
 			N: aws.String(fmt.Sprint(s)),
 		}
 	}
