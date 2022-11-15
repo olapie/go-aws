@@ -3,13 +3,14 @@ package awskit
 import (
 	"context"
 	"fmt"
-	"golang.org/x/exp/constraints"
 
+	"code.olapie.com/conv"
 	"code.olapie.com/errors"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+	"golang.org/x/exp/constraints"
 )
 
 // DDBNoSortKey means table doesn't have sort key
@@ -96,23 +97,26 @@ func (t *DDBTable[E, P, S]) Save(ctx context.Context, item E) error {
 }
 
 func (t *DDBTable[E, P, S]) BatchSave(ctx context.Context, items []E) error {
-	requests := make([]*dynamodb.WriteRequest, len(items))
-	for i, item := range items {
+	requests, err := conv.Slice(items, func(item E) (*dynamodb.WriteRequest, error) {
 		attrs, err := dynamodbattribute.MarshalMap(item)
 		if err != nil {
-			return fmt.Errorf("marshal: %w", err)
+			return nil, err
 		}
-		requests[i] = &dynamodb.WriteRequest{
+		return &dynamodb.WriteRequest{
 			PutRequest: &dynamodb.PutRequest{
 				Item: attrs,
 			},
-		}
+		}, nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("cannot create write request: %w", err)
 	}
 
 	input := &dynamodb.BatchWriteItemInput{RequestItems: map[string][]*dynamodb.WriteRequest{
 		t.tableName: requests,
 	}}
-	_, err := t.db.BatchWriteItemWithContext(ctx, input)
+	_, err = t.db.BatchWriteItemWithContext(ctx, input)
 	return err
 }
 
@@ -148,14 +152,13 @@ func (t *DDBTable[E, P, S]) Delete(ctx context.Context, partition P, rangeKey S)
 }
 
 func (t *DDBTable[E, P, S]) BatchDelete(ctx context.Context, partition P, sortKeys ...S) error {
-	requests := make([]*dynamodb.WriteRequest, len(sortKeys))
-	for i, rk := range sortKeys {
-		requests[i] = &dynamodb.WriteRequest{
+	requests := conv.MustSlice(sortKeys, func(k S) *dynamodb.WriteRequest {
+		return &dynamodb.WriteRequest{
 			DeleteRequest: &dynamodb.DeleteRequest{
-				Key: t.primaryKey.AttributeValue(partition, rk),
+				Key: t.primaryKey.AttributeValue(partition, k),
 			},
 		}
-	}
+	})
 
 	input := &dynamodb.BatchWriteItemInput{RequestItems: map[string][]*dynamodb.WriteRequest{
 		t.tableName: requests,
@@ -166,10 +169,7 @@ func (t *DDBTable[E, P, S]) BatchDelete(ctx context.Context, partition P, sortKe
 
 func (t *DDBTable[E, P, S]) Query(ctx context.Context, partition P) ([]E, error) {
 	keyCond := expression.Key(t.primaryKey.PartitionKey).Equal(expression.Value(partition))
-	var cols []expression.NameBuilder
-	for _, col := range t.columns {
-		cols = append(cols, expression.Name(col))
-	}
+	cols := conv.MustSlice(t.columns, expression.Name)
 	proj := expression.NamesList(cols[0], cols[1:]...)
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCond).WithProjection(proj).Build()
 	if err != nil {
