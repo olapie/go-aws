@@ -12,10 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 )
 
-type DDBAttributeValuer interface {
-	AttributeValue() map[string]*dynamodb.AttributeValue
-}
-
 // DDBNoSortKey means table doesn't have sort key
 type DDBNoSortKey *any
 
