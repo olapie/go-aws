@@ -4,14 +4,15 @@ go 1.19
 
 require (
 	code.olapie.com/conv v1.2.3
+	code.olapie.com/errors v1.0.2
 	code.olapie.com/ola/httpkit v1.1.3
 	github.com/aws/aws-sdk-go v1.44.137
 	github.com/google/uuid v1.3.0
 	github.com/stretchr/testify v1.8.0
+	golang.org/x/exp v0.0.0-20221111204811-129d8d6c17ab
 )
 
 require (
-	code.olapie.com/errors v1.0.2 // indirect
 	code.olapie.com/log v1.0.1 // indirect
 	code.olapie.com/types v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
