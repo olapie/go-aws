@@ -16,58 +16,62 @@ type DDBAttributeValuer interface {
 	AttributeValue() map[string]*dynamodb.AttributeValue
 }
 
+type DDBNoType *any
+
 type DDBKeyTypeSet interface {
 	~string | constraints.Signed | constraints.Unsigned
 }
 
-type DDBPrimaryKey[P DDBKeyTypeSet, R DDBKeyTypeSet] struct {
-	PartitionName string
-	RangeName     string
+type DDBPrimaryKey[P DDBKeyTypeSet, R DDBKeyTypeSet | DDBNoType] struct {
+	PartitionKey string
+	RangeKey     string
 }
 
-func (pk *DDBPrimaryKey[P, R]) AttributeValue(p P, r *R) map[string]*dynamodb.AttributeValue {
+func (pk *DDBPrimaryKey[P, R]) AttributeValue(p P, r R) map[string]*dynamodb.AttributeValue {
 	attrs := make(map[string]*dynamodb.AttributeValue)
 	if str, ok := any(p).(string); ok {
-		attrs[pk.PartitionName] = &dynamodb.AttributeValue{
+		attrs[pk.PartitionKey] = &dynamodb.AttributeValue{
 			S: aws.String(str),
 		}
 	} else {
-		attrs[pk.PartitionName] = &dynamodb.AttributeValue{
+		attrs[pk.PartitionKey] = &dynamodb.AttributeValue{
 			N: aws.String(fmt.Sprint(p)),
 		}
 	}
 
-	if r != nil {
-		if pk.RangeName == "" {
-			panic("no range key specified")
-		}
+	if _, ok := any(r).(DDBNoType); ok {
+		return attrs
+	}
 
-		if str, ok := any(r).(string); ok {
-			attrs[pk.PartitionName] = &dynamodb.AttributeValue{
-				S: aws.String(str),
-			}
-		} else {
-			attrs[pk.PartitionName] = &dynamodb.AttributeValue{
-				N: aws.String(fmt.Sprint(r)),
-			}
+	if pk.RangeKey == "" {
+		panic("no range key specified")
+	}
+
+	if str, ok := any(r).(string); ok {
+		attrs[pk.RangeKey] = &dynamodb.AttributeValue{
+			S: aws.String(str),
+		}
+	} else {
+		attrs[pk.RangeKey] = &dynamodb.AttributeValue{
+			N: aws.String(fmt.Sprint(r)),
 		}
 	}
 
 	return attrs
 }
 
-type DDBTable[T any, P DDBKeyTypeSet, R DDBKeyTypeSet] struct {
+type DDBTable[T any, P DDBKeyTypeSet, R DDBKeyTypeSet | DDBNoType] struct {
 	db         *dynamodb.DynamoDB
 	tableName  string
 	primaryKey *DDBPrimaryKey[P, R]
 	columns    []string
 }
 
-func NewDDBTable[T any, P DDBKeyTypeSet, R DDBKeyTypeSet](db *dynamodb.DynamoDB, tableName string, primaryKey *DDBPrimaryKey[P, R], columns []string) *DDBTable[T, P, R] {
+func NewDDBTable[T any, P DDBKeyTypeSet, R DDBKeyTypeSet | DDBNoType](db *dynamodb.DynamoDB, tableName string, pk *DDBPrimaryKey[P, R], columns []string) *DDBTable[T, P, R] {
 	return &DDBTable[T, P, R]{
 		db:         db,
 		tableName:  tableName,
-		primaryKey: primaryKey,
+		primaryKey: pk,
 		columns:    columns,
 	}
 }
@@ -107,7 +111,7 @@ func (r *DDBTable[T, P, R]) BatchSave(ctx context.Context, items []T) error {
 	return errors.Wrapf(err, "batch write item")
 }
 
-func (r *DDBTable[T, P, R]) Get(ctx context.Context, partitionKey P, rangeKey *R) (T, error) {
+func (r *DDBTable[T, P, R]) Get(ctx context.Context, partitionKey P, rangeKey R) (T, error) {
 	input := &dynamodb.GetItemInput{
 		Key:       r.primaryKey.AttributeValue(partitionKey, rangeKey),
 		TableName: aws.String(r.tableName),
@@ -129,7 +133,7 @@ func (r *DDBTable[T, P, R]) Get(ctx context.Context, partitionKey P, rangeKey *R
 	return item, nil
 }
 
-func (r *DDBTable[T, P, R]) Delete(ctx context.Context, partitionKey P, rangeKey *R) error {
+func (r *DDBTable[T, P, R]) Delete(ctx context.Context, partitionKey P, rangeKey R) error {
 	input := &dynamodb.DeleteItemInput{
 		Key:       r.primaryKey.AttributeValue(partitionKey, rangeKey),
 		TableName: aws.String(r.tableName),
@@ -143,7 +147,7 @@ func (r *DDBTable[T, P, R]) BatchDelete(ctx context.Context, partitionKey P, ran
 	for i, rk := range rangeKeys {
 		requests[i] = &dynamodb.WriteRequest{
 			DeleteRequest: &dynamodb.DeleteRequest{
-				Key: r.primaryKey.AttributeValue(partitionKey, &rk),
+				Key: r.primaryKey.AttributeValue(partitionKey, rk),
 			},
 		}
 	}
@@ -156,7 +160,7 @@ func (r *DDBTable[T, P, R]) BatchDelete(ctx context.Context, partitionKey P, ran
 }
 
 func (r *DDBTable[T, P, R]) Query(ctx context.Context, partitionKey P) ([]T, error) {
-	keyCond := expression.Key(r.primaryKey.PartitionName).Equal(expression.Value(partitionKey))
+	keyCond := expression.Key(r.primaryKey.PartitionKey).Equal(expression.Value(partitionKey))
 	var cols []expression.NameBuilder
 	for _, col := range r.columns {
 		cols = append(cols, expression.Name(col))
