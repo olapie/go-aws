@@ -1,6 +1,7 @@
 package awskit
 
 import (
+	"code.olapie.com/errors"
 	"context"
 
 	"code.olapie.com/conv"
@@ -30,6 +31,18 @@ func NewSES(sess *session.Session) *SES {
 }
 
 func (s *SES) Send(ctx context.Context, email *Email) (string, error) {
+	if email.From == "" {
+		return "", errors.New("missing From")
+	}
+
+	if len(email.To) == 0 {
+		return "", errors.New("missing To")
+	}
+
+	if email.Subject == "" {
+		return "", errors.New("missing Subject")
+	}
+
 	body := new(ses.Body)
 	var charset *string
 	if email.Charset != "" {
