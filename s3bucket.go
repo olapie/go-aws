@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/aws/smithy-go"
 	"io"
 	"time"
 
@@ -13,25 +14,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/aws/smithy-go"
 )
 
 const (
 	cacheControl = "public, max-age=14400"
 )
 
-type S3ACL string
-
-// S3Bucket ACL
-const (
-	S3Private                S3ACL = "private"
-	S3PublicRead             S3ACL = "public-read"
-	S3PublicReadWrite        S3ACL = "public-read-write"
-	S3AWSExecRead            S3ACL = "aws-exec-read"
-	S3AuthenticatedRead      S3ACL = "authenticated-read"
-	S3BucketOwnerRead        S3ACL = "bucket-owner-read"
-	S3BucketOwnerFullControl S3ACL = "bucket-owner-full-control"
-)
+var s3ErrorNotFound = &types.NotFound{}
+var _ error = s3ErrorNotFound
 
 type S3Bucket struct {
 	bucket             string
@@ -43,15 +33,15 @@ type S3Bucket struct {
 }
 
 func NewS3Bucket(cfg aws.Config, bucket string, options ...func(*s3.Options)) *S3Bucket {
-	b := &S3Bucket{
+	s := &S3Bucket{
 		bucket:       bucket,
 		client:       s3.NewFromConfig(cfg, options...),
 		ACL:          types.ObjectCannedACLPrivate,
 		CacheControl: cacheControl,
 	}
-	b.objExistsWaiter = s3.NewObjectExistsWaiter(b.client)
-	b.objNotExistsWaiter = s3.NewObjectNotExistsWaiter(b.client)
-	return b
+	s.objExistsWaiter = s3.NewObjectExistsWaiter(s.client)
+	s.objNotExistsWaiter = s3.NewObjectNotExistsWaiter(s.client)
+	return s
 }
 
 func (s *S3Bucket) Put(ctx context.Context, id string, content []byte, metadata map[string]string) error {
@@ -64,12 +54,8 @@ func (s *S3Bucket) Put(ctx context.Context, id string, content []byte, metadata 
 		ContentType:  aws.String(httpkit.DetectMIMEType(content)),
 		Metadata:     metadata,
 	}
-
 	_, err := s.client.PutObject(ctx, input)
-	if err != nil {
-		return fmt.Errorf("s3.PutObject: %w", err)
-	}
-	return nil
+	return err
 }
 
 func (s *S3Bucket) Get(ctx context.Context, id string) ([]byte, error) {
@@ -77,6 +63,7 @@ func (s *S3Bucket) Get(ctx context.Context, id string) ([]byte, error) {
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(id),
 	}
+
 	output, err := s.client.GetObject(ctx, input)
 	if err != nil {
 		return nil, fmt.Errorf("s3.GetObject: %w", err)
@@ -87,6 +74,7 @@ func (s *S3Bucket) Get(ctx context.Context, id string) ([]byte, error) {
 		return nil, fmt.Errorf("io.ReadAll: %w", err)
 	}
 	output.Body.Close()
+
 	return content, nil
 }
 
@@ -98,7 +86,7 @@ func (s *S3Bucket) Exists(ctx context.Context, id string) (bool, error) {
 	}
 
 	if apiErr, ok := err.(smithy.APIError); ok {
-		if apiErr.ErrorCode() == "NotFound" {
+		if apiErr.ErrorCode() == s3ErrorNotFound.ErrorCode() {
 			return false, nil
 		}
 	}
