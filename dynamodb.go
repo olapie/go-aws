@@ -6,10 +6,11 @@ import (
 
 	"code.olapie.com/conv"
 	"code.olapie.com/errors"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"golang.org/x/exp/constraints"
 )
 
@@ -29,15 +30,15 @@ type DDBPrimaryKey[P DDBPartitionKeyConstraint, S DDBSortKeyConstraint] struct {
 	SortKey      string
 }
 
-func (pk *DDBPrimaryKey[P, S]) AttributeValue(p P, s S) map[string]*dynamodb.AttributeValue {
-	attrs := make(map[string]*dynamodb.AttributeValue)
+func (pk *DDBPrimaryKey[P, S]) AttributeValue(p P, s S) map[string]types.AttributeValue {
+	attrs := make(map[string]types.AttributeValue)
 	if str, ok := any(p).(string); ok {
-		attrs[pk.PartitionKey] = &dynamodb.AttributeValue{
-			S: aws.String(str),
+		attrs[pk.PartitionKey] = &types.AttributeValueMemberS{
+			Value: str,
 		}
 	} else {
-		attrs[pk.PartitionKey] = &dynamodb.AttributeValue{
-			N: aws.String(fmt.Sprint(p)),
+		attrs[pk.PartitionKey] = &types.AttributeValueMemberN{
+			Value: fmt.Sprint(p),
 		}
 	}
 
@@ -50,12 +51,12 @@ func (pk *DDBPrimaryKey[P, S]) AttributeValue(p P, s S) map[string]*dynamodb.Att
 	}
 
 	if str, ok := any(s).(string); ok {
-		attrs[pk.SortKey] = &dynamodb.AttributeValue{
-			S: aws.String(str),
+		attrs[pk.SortKey] = &types.AttributeValueMemberS{
+			Value: str,
 		}
 	} else {
-		attrs[pk.SortKey] = &dynamodb.AttributeValue{
-			N: aws.String(fmt.Sprint(s)),
+		attrs[pk.SortKey] = &types.AttributeValueMemberN{
+			Value: fmt.Sprint(s),
 		}
 	}
 
@@ -67,15 +68,15 @@ func (pk *DDBPrimaryKey[P, S]) AttributeValue(p P, s S) map[string]*dynamodb.Att
 // P - type of partition key
 // S - type of sort key
 type DDBTable[E any, P DDBPartitionKeyConstraint, S DDBSortKeyConstraint] struct {
-	db         *dynamodb.DynamoDB
+	client     *dynamodb.Client
 	tableName  string
 	primaryKey *DDBPrimaryKey[P, S]
 	columns    []string
 }
 
-func NewDDBTable[E any, P DDBPartitionKeyConstraint, S DDBSortKeyConstraint](db *dynamodb.DynamoDB, tableName string, pk *DDBPrimaryKey[P, S], columns []string) *DDBTable[E, P, S] {
+func NewDDBTable[E any, P DDBPartitionKeyConstraint, S DDBSortKeyConstraint](db *dynamodb.Client, tableName string, pk *DDBPrimaryKey[P, S], columns []string) *DDBTable[E, P, S] {
 	return &DDBTable[E, P, S]{
-		db:         db,
+		client:     db,
 		tableName:  tableName,
 		primaryKey: pk,
 		columns:    columns,
@@ -83,27 +84,27 @@ func NewDDBTable[E any, P DDBPartitionKeyConstraint, S DDBSortKeyConstraint](db 
 }
 
 func (t *DDBTable[E, P, S]) Save(ctx context.Context, item E) error {
-	attrs, err := dynamodbattribute.MarshalMap(item)
+	attrs, err := attributevalue.MarshalMap(item)
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
 	}
 	input := &dynamodb.PutItemInput{
 		Item:                   attrs,
-		ReturnConsumedCapacity: aws.String("TOTAL"),
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityTotal,
 		TableName:              aws.String(t.tableName),
 	}
-	_, err = t.db.PutItemWithContext(ctx, input)
+	_, err = t.client.PutItem(ctx, input)
 	return err
 }
 
 func (t *DDBTable[E, P, S]) BatchSave(ctx context.Context, items []E) error {
-	requests, err := conv.Slice(items, func(item E) (*dynamodb.WriteRequest, error) {
-		attrs, err := dynamodbattribute.MarshalMap(item)
+	requests, err := conv.Slice(items, func(item E) (types.WriteRequest, error) {
+		attrs, err := attributevalue.MarshalMap(item)
 		if err != nil {
-			return nil, err
+			return types.WriteRequest{}, err
 		}
-		return &dynamodb.WriteRequest{
-			PutRequest: &dynamodb.PutRequest{
+		return types.WriteRequest{
+			PutRequest: &types.PutRequest{
 				Item: attrs,
 			},
 		}, nil
@@ -113,10 +114,10 @@ func (t *DDBTable[E, P, S]) BatchSave(ctx context.Context, items []E) error {
 		return fmt.Errorf("cannot create write request: %w", err)
 	}
 
-	input := &dynamodb.BatchWriteItemInput{RequestItems: map[string][]*dynamodb.WriteRequest{
+	input := &dynamodb.BatchWriteItemInput{RequestItems: map[string][]types.WriteRequest{
 		t.tableName: requests,
 	}}
-	_, err = t.db.BatchWriteItemWithContext(ctx, input)
+	_, err = t.client.BatchWriteItem(ctx, input)
 	return err
 }
 
@@ -126,7 +127,7 @@ func (t *DDBTable[E, P, S]) Get(ctx context.Context, partition P, rangeKey S) (E
 		TableName: aws.String(t.tableName),
 	}
 	var item E
-	output, err := t.db.GetItemWithContext(ctx, input)
+	output, err := t.client.GetItem(ctx, input)
 	if err != nil {
 		return item, fmt.Errorf("get item: %w", err)
 	}
@@ -135,7 +136,7 @@ func (t *DDBTable[E, P, S]) Get(ctx context.Context, partition P, rangeKey S) (E
 		return item, errors.NotExist
 	}
 
-	err = dynamodbattribute.UnmarshalMap(output.Item, &item)
+	err = attributevalue.UnmarshalMap(output.Item, &item)
 	if err != nil {
 		return item, fmt.Errorf("unmarshal: %w", err)
 	}
@@ -147,23 +148,23 @@ func (t *DDBTable[E, P, S]) Delete(ctx context.Context, partition P, rangeKey S)
 		Key:       t.primaryKey.AttributeValue(partition, rangeKey),
 		TableName: aws.String(t.tableName),
 	}
-	_, err := t.db.DeleteItemWithContext(ctx, input)
+	_, err := t.client.DeleteItem(ctx, input)
 	return err
 }
 
 func (t *DDBTable[E, P, S]) BatchDelete(ctx context.Context, partition P, sortKeys ...S) error {
-	requests := conv.MustSlice(sortKeys, func(k S) *dynamodb.WriteRequest {
-		return &dynamodb.WriteRequest{
-			DeleteRequest: &dynamodb.DeleteRequest{
+	requests := conv.MustSlice(sortKeys, func(k S) types.WriteRequest {
+		return types.WriteRequest{
+			DeleteRequest: &types.DeleteRequest{
 				Key: t.primaryKey.AttributeValue(partition, k),
 			},
 		}
 	})
 
-	input := &dynamodb.BatchWriteItemInput{RequestItems: map[string][]*dynamodb.WriteRequest{
+	input := &dynamodb.BatchWriteItemInput{RequestItems: map[string][]types.WriteRequest{
 		t.tableName: requests,
 	}}
-	_, err := t.db.BatchWriteItemWithContext(ctx, input)
+	_, err := t.client.BatchWriteItem(ctx, input)
 	return err
 }
 
@@ -183,12 +184,12 @@ func (t *DDBTable[E, P, S]) Query(ctx context.Context, partition P) ([]E, error)
 		ProjectionExpression:      expr.Projection(),
 		TableName:                 aws.String(t.tableName),
 	}
-	result, err := t.db.QueryWithContext(ctx, input)
+	result, err := t.client.Query(ctx, input)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
 	var items []E
-	err = dynamodbattribute.UnmarshalListOfMaps(result.Items, &items)
+	err = attributevalue.UnmarshalListOfMaps(result.Items, &items)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal: %w", err)
 	}

@@ -7,15 +7,17 @@ import (
 	"time"
 
 	"code.olapie.com/awskit"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
-func setupS3(t *testing.T) *awskit.S3 {
+func setupS3(t *testing.T) *awskit.S3Bucket {
 	bucket := os.Getenv("S3_TEST_BUCKET")
 	require.NotEmpty(t, bucket)
-	return awskit.NewS3(bucket, session.Must(session.NewSession()))
+	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithSharedConfigProfile("default"))
+	require.NoError(t, err)
+	return awskit.NewS3Bucket(cfg, bucket)
 }
 
 func TestS3_Upload(t *testing.T) {
@@ -24,13 +26,11 @@ func TestS3_Upload(t *testing.T) {
 	defer cancel()
 	id := uuid.NewString()
 	content := []byte("content" + uuid.NewString())
-	metadata := map[string]string{"Testkey": "test value"}
-	location, err := r.Upload(ctx, id, content, metadata)
+	metadata := map[string]string{"test-key": "test value"}
+	err := r.Put(ctx, id, content, metadata)
 	require.NoError(t, err)
-	require.NotEmpty(t, location)
-	t.Log(location)
 
-	readContent, err := r.Download(ctx, id)
+	readContent, err := r.Get(ctx, id)
 	require.NoError(t, err)
 	require.Equal(t, content, readContent)
 
@@ -55,7 +55,7 @@ func TestS3_BatchDelete(t *testing.T) {
 		id := uuid.NewString()
 		content := []byte("content" + uuid.NewString())
 		metadata := map[string]string{"Testkey": "test value"}
-		_, err := r.Upload(ctx, id, content, metadata)
+		err := r.Put(ctx, id, content, metadata)
 		require.NoError(t, err)
 		ids = append(ids, id)
 	}

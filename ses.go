@@ -1,13 +1,12 @@
 package awskit
 
 import (
-	"code.olapie.com/errors"
 	"context"
 
-	"code.olapie.com/conv"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ses"
+	"code.olapie.com/errors"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ses"
+	"github.com/aws/aws-sdk-go-v2/service/ses/types"
 )
 
 type Email struct {
@@ -21,12 +20,12 @@ type Email struct {
 }
 
 type SES struct {
-	ses *ses.SES
+	ses *ses.Client
 }
 
-func NewSES(sess *session.Session) *SES {
+func NewSES(cfg aws.Config) *SES {
 	return &SES{
-		ses: ses.New(sess),
+		ses: ses.NewFromConfig(cfg),
 	}
 }
 
@@ -43,7 +42,7 @@ func (s *SES) Send(ctx context.Context, email *Email) (string, error) {
 		return "", errors.New("missing Subject")
 	}
 
-	body := new(ses.Body)
+	body := new(types.Body)
 	var charset *string
 	if email.Charset != "" {
 		charset = aws.String(email.Charset)
@@ -52,25 +51,25 @@ func (s *SES) Send(ctx context.Context, email *Email) (string, error) {
 	}
 
 	if email.HTMLBody != "" {
-		body.Html = &ses.Content{
+		body.Html = &types.Content{
 			Charset: charset,
 			Data:    aws.String(email.HTMLBody),
 		}
 	} else {
-		body.Text = &ses.Content{
+		body.Text = &types.Content{
 			Charset: charset,
 			Data:    aws.String(email.TextBody),
 		}
 	}
 
 	input := &ses.SendEmailInput{
-		Destination: &ses.Destination{
-			CcAddresses: conv.MustSlice(email.Cc, aws.String),
-			ToAddresses: conv.MustSlice(email.To, aws.String),
+		Destination: &types.Destination{
+			CcAddresses: email.Cc,
+			ToAddresses: email.To,
 		},
-		Message: &ses.Message{
+		Message: &types.Message{
 			Body: body,
-			Subject: &ses.Content{
+			Subject: &types.Content{
 				Charset: charset,
 				Data:    aws.String(email.Subject),
 			},
@@ -78,7 +77,7 @@ func (s *SES) Send(ctx context.Context, email *Email) (string, error) {
 		Source: aws.String(email.From),
 	}
 
-	result, err := s.ses.SendEmailWithContext(ctx, input)
+	result, err := s.ses.SendEmail(ctx, input)
 	if err != nil {
 		return "", err
 	}
