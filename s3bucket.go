@@ -49,10 +49,6 @@ func NewS3BucketFromConfig(bucket string, cfg aws.Config, options ...func(*s3.Op
 }
 
 func (s *S3Bucket) Put(ctx context.Context, id string, content []byte, metadata map[string]string) error {
-	if id == "" {
-		return errors.BadRequest("missing id")
-	}
-
 	input := &s3.PutObjectInput{
 		Bucket:       aws.String(s.bucket),
 		Key:          aws.String(id),
