@@ -21,8 +21,6 @@ func setupS3Bucket(t *testing.T) *awskit.S3Bucket {
 	require.NotEmpty(t, bucket)
 	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithSharedConfigProfile(profile))
 	require.NoError(t, err)
-	t.Log(cfg.Region)
-	cfg.Region = "us-west-1"
 	return awskit.NewS3Bucket(cfg, bucket)
 }
 

@@ -86,7 +86,7 @@ func NewDDBTable[E any, P DDBPartitionKeyConstraint, S DDBSortKeyConstraint](db 
 func (t *DDBTable[E, P, S]) Save(ctx context.Context, item E) error {
 	attrs, err := attributevalue.MarshalMap(item)
 	if err != nil {
-		return fmt.Errorf("marshal: %w", err)
+		return fmt.Errorf("attributevalue.MarshalMap: %w", err)
 	}
 	input := &dynamodb.PutItemInput{
 		Item:                   attrs,
@@ -94,31 +94,29 @@ func (t *DDBTable[E, P, S]) Save(ctx context.Context, item E) error {
 		TableName:              aws.String(t.tableName),
 	}
 	_, err = t.client.PutItem(ctx, input)
-	return err
+	return fmt.Errorf("dynamodb.PutItem: %w", err)
 }
 
 func (t *DDBTable[E, P, S]) BatchSave(ctx context.Context, items []E) error {
 	requests, err := conv.Slice(items, func(item E) (types.WriteRequest, error) {
+		var req types.WriteRequest
 		attrs, err := attributevalue.MarshalMap(item)
 		if err != nil {
-			return types.WriteRequest{}, err
+			return req, fmt.Errorf("attributevalue.MarshalMap: %w", err)
 		}
-		return types.WriteRequest{
-			PutRequest: &types.PutRequest{
-				Item: attrs,
-			},
-		}, nil
+		req.PutRequest = &types.PutRequest{Item: attrs}
+		return req, nil
 	})
 
 	if err != nil {
-		return fmt.Errorf("cannot create write request: %w", err)
+		return fmt.Errorf("convert items to WriteRequest list: %w", err)
 	}
 
 	input := &dynamodb.BatchWriteItemInput{RequestItems: map[string][]types.WriteRequest{
 		t.tableName: requests,
 	}}
 	_, err = t.client.BatchWriteItem(ctx, input)
-	return err
+	return fmt.Errorf("dynamodb.BatchWriteItem: %w", err)
 }
 
 func (t *DDBTable[E, P, S]) Get(ctx context.Context, partition P, rangeKey S) (E, error) {
@@ -129,7 +127,7 @@ func (t *DDBTable[E, P, S]) Get(ctx context.Context, partition P, rangeKey S) (E
 	var item E
 	output, err := t.client.GetItem(ctx, input)
 	if err != nil {
-		return item, fmt.Errorf("get item: %w", err)
+		return item, fmt.Errorf("dynamodb.GetItem: %w", err)
 	}
 
 	if output.Item == nil {
@@ -138,7 +136,7 @@ func (t *DDBTable[E, P, S]) Get(ctx context.Context, partition P, rangeKey S) (E
 
 	err = attributevalue.UnmarshalMap(output.Item, &item)
 	if err != nil {
-		return item, fmt.Errorf("unmarshal: %w", err)
+		return item, fmt.Errorf("attributevalue.UnmarshalMap: %w", err)
 	}
 	return item, nil
 }
@@ -174,7 +172,7 @@ func (t *DDBTable[E, P, S]) Query(ctx context.Context, partition P) ([]E, error)
 	proj := expression.NamesList(cols[0], cols[1:]...)
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCond).WithProjection(proj).Build()
 	if err != nil {
-		return nil, fmt.Errorf("build expression: %w", err)
+		return nil, fmt.Errorf("expression.Build: %w", err)
 	}
 
 	input := &dynamodb.QueryInput{
@@ -186,12 +184,12 @@ func (t *DDBTable[E, P, S]) Query(ctx context.Context, partition P) ([]E, error)
 	}
 	result, err := t.client.Query(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("query: %w", err)
+		return nil, fmt.Errorf("dynamodb.Query: %w", err)
 	}
 	var items []E
 	err = attributevalue.UnmarshalListOfMaps(result.Items, &items)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal: %w", err)
+		return nil, fmt.Errorf("attributevalue.UnmarshalListOfMaps: %w", err)
 	}
 	return items, nil
 }

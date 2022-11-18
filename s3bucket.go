@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/aws/smithy-go"
 	"io"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 )
 
 const (
@@ -66,6 +66,10 @@ func (s *S3Bucket) Get(ctx context.Context, id string) ([]byte, error) {
 
 	output, err := s.client.GetObject(ctx, input)
 	if err != nil {
+		cause := errors.Cause(err)
+		if _, ok := cause.(*types.NoSuchKey); ok {
+			return nil, errors.NotFound("object %s doesn't exist", id)
+		}
 		return nil, fmt.Errorf("s3.GetObject: %w", err)
 	}
 

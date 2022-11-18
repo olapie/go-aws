@@ -2,6 +2,7 @@ package awskit
 
 import (
 	"context"
+	"fmt"
 
 	"code.olapie.com/errors"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -79,7 +80,7 @@ func (s *SES) Send(ctx context.Context, email *Email) (string, error) {
 
 	result, err := s.ses.SendEmail(ctx, input)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("ses.SendEmail: %w", err)
 	}
 
 	return *result.MessageId, nil
