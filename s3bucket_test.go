@@ -7,21 +7,14 @@ import (
 	"time"
 
 	"code.olapie.com/awskit"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
 func setupS3Bucket(t *testing.T) *awskit.S3Bucket {
-	profile := os.Getenv("AWS_TEST_PROFILE")
-	if profile == "" {
-		profile = "test"
-	}
 	bucket := os.Getenv("S3_TEST_BUCKET")
 	require.NotEmpty(t, bucket)
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithSharedConfigProfile(profile))
-	require.NoError(t, err)
-	return awskit.NewS3Bucket(cfg, bucket)
+	return awskit.NewS3BucketFromConfig(bucket, loadConfig(t))
 }
 
 func TestS3_Put(t *testing.T) {

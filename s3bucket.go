@@ -32,16 +32,20 @@ type S3Bucket struct {
 	CacheControl       string
 }
 
-func NewS3Bucket(cfg aws.Config, bucket string, options ...func(*s3.Options)) *S3Bucket {
+func NewS3Bucket(bucket string, c *s3.Client) *S3Bucket {
 	s := &S3Bucket{
 		bucket:       bucket,
-		client:       s3.NewFromConfig(cfg, options...),
+		client:       c,
 		ACL:          types.ObjectCannedACLPrivate,
 		CacheControl: cacheControl,
 	}
 	s.objExistsWaiter = s3.NewObjectExistsWaiter(s.client)
 	s.objNotExistsWaiter = s3.NewObjectNotExistsWaiter(s.client)
 	return s
+}
+
+func NewS3BucketFromConfig(bucket string, cfg aws.Config, options ...func(*s3.Options)) *S3Bucket {
+	return NewS3Bucket(bucket, s3.NewFromConfig(cfg, options...))
 }
 
 func (s *S3Bucket) Put(ctx context.Context, id string, content []byte, metadata map[string]string) error {
