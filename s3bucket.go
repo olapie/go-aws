@@ -49,6 +49,10 @@ func NewS3BucketFromConfig(bucket string, cfg aws.Config, options ...func(*s3.Op
 }
 
 func (s *S3Bucket) Put(ctx context.Context, id string, content []byte, metadata map[string]string) error {
+	if id == "" {
+		return errors.BadRequest("missing id")
+	}
+
 	input := &s3.PutObjectInput{
 		Bucket:       aws.String(s.bucket),
 		Key:          aws.String(id),
@@ -70,8 +74,7 @@ func (s *S3Bucket) Get(ctx context.Context, id string) ([]byte, error) {
 
 	output, err := s.client.GetObject(ctx, input)
 	if err != nil {
-		cause := errors.Cause(err)
-		if _, ok := cause.(*types.NoSuchKey); ok {
+		if _, ok := errors.CauseOf[*types.NoSuchKey](err); ok {
 			return nil, errors.NotFound("object %s doesn't exist", id)
 		}
 		return nil, fmt.Errorf("s3.GetObject: %w", err)
@@ -88,12 +91,11 @@ func (s *S3Bucket) Get(ctx context.Context, id string) ([]byte, error) {
 
 func (s *S3Bucket) Exists(ctx context.Context, id string) (bool, error) {
 	_, err := s.getHeadObject(ctx, id)
-	err = errors.Cause(err)
 	if err == nil {
 		return true, nil
 	}
 
-	if apiErr, ok := err.(smithy.APIError); ok {
+	if apiErr, ok := errors.CauseOf[smithy.APIError](err); ok {
 		if apiErr.ErrorCode() == s3ErrorNotFound.ErrorCode() {
 			return false, nil
 		}
