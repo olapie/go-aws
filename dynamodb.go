@@ -2,6 +2,7 @@ package awskit
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"code.olapie.com/conv"
@@ -94,7 +95,7 @@ func (t *DDBTable[E, P, S]) Save(ctx context.Context, item E) error {
 		TableName:              aws.String(t.tableName),
 	}
 	_, err = t.client.PutItem(ctx, input)
-	return fmt.Errorf("dynamodb.PutItem: %w", err)
+	return errors.Wrapf(err, "dynamodb.PutItem")
 }
 
 func (t *DDBTable[E, P, S]) BatchSave(ctx context.Context, items []E) error {
@@ -116,7 +117,7 @@ func (t *DDBTable[E, P, S]) BatchSave(ctx context.Context, items []E) error {
 		t.tableName: requests,
 	}}
 	_, err = t.client.BatchWriteItem(ctx, input)
-	return fmt.Errorf("dynamodb.BatchWriteItem: %w", err)
+	return errors.Wrapf(err, "dynamodb.BatchWriteItem")
 }
 
 func (t *DDBTable[E, P, S]) Get(ctx context.Context, partition P, rangeKey S) (E, error) {
@@ -167,6 +168,64 @@ func (t *DDBTable[E, P, S]) BatchDelete(ctx context.Context, partition P, sortKe
 }
 
 func (t *DDBTable[E, P, S]) Query(ctx context.Context, partition P) ([]E, error) {
+	input, err := t.createQueryInput(partition, 1024)
+	if err != nil {
+		return nil, fmt.Errorf("createQueryInput: %w", err)
+	}
+
+	var items []E
+	paginator := dynamodb.NewQueryPaginator(t.client, input)
+	for paginator.HasMorePages() {
+		output, err := paginator.NextPage(ctx)
+		if err != nil {
+			return items, fmt.Errorf("paginator.NextPage: %w", err)
+		}
+		var pageItems []E
+		err = attributevalue.UnmarshalListOfMaps(output.Items, &pageItems)
+		if err != nil {
+			return nil, fmt.Errorf("attributevalue.UnmarshalListOfMaps: %w", err)
+		}
+		items = append(items, pageItems...)
+	}
+	return items, nil
+}
+
+func (t *DDBTable[E, P, S]) QueryPage(ctx context.Context, partition P, nextToken string, limit int) ([]E, string, error) {
+	input, err := t.createQueryInput(partition, int32(limit))
+	if err != nil {
+		return nil, nextToken, fmt.Errorf("createQueryInput: %w", err)
+	}
+
+	if nextToken != "" {
+		var nextKeyMap map[string]string
+		err = json.Unmarshal([]byte(nextToken), &nextKeyMap)
+		if err != nil {
+			return nil, nextToken, fmt.Errorf("json.Unmarshal nextToken: %w", err)
+		}
+		input.ExclusiveStartKey, err = attributevalue.MarshalMap(nextKeyMap)
+		if err != nil {
+			return nil, nextToken, fmt.Errorf("attributevalue.MarshalMap nextKeyMap: %w", err)
+		}
+	}
+
+	output, err := t.client.Query(ctx, input)
+	if err != nil {
+		return nil, nextToken, fmt.Errorf("dynamodb.Query: %w", err)
+	}
+	var items []E
+	err = attributevalue.UnmarshalListOfMaps(output.Items, &items)
+	if err != nil {
+		return nil, nextToken, fmt.Errorf("attributevalue.UnmarshalListOfMaps: %w", err)
+	}
+	if len(output.LastEvaluatedKey) == 0 {
+		nextToken = ""
+	} else {
+		nextToken = conv.MustString(output.LastEvaluatedKey)
+	}
+	return items, nextToken, nil
+}
+
+func (t *DDBTable[E, P, S]) createQueryInput(partition P, limit int32) (*dynamodb.QueryInput, error) {
 	keyCond := expression.Key(t.primaryKey.PartitionKey).Equal(expression.Value(partition))
 	cols := conv.MustSlice(t.columns, expression.Name)
 	proj := expression.NamesList(cols[0], cols[1:]...)
@@ -181,15 +240,7 @@ func (t *DDBTable[E, P, S]) Query(ctx context.Context, partition P) ([]E, error)
 		KeyConditionExpression:    expr.KeyCondition(),
 		ProjectionExpression:      expr.Projection(),
 		TableName:                 aws.String(t.tableName),
+		Limit:                     aws.Int32(limit),
 	}
-	result, err := t.client.Query(ctx, input)
-	if err != nil {
-		return nil, fmt.Errorf("dynamodb.Query: %w", err)
-	}
-	var items []E
-	err = attributevalue.UnmarshalListOfMaps(result.Items, &items)
-	if err != nil {
-		return nil, fmt.Errorf("attributevalue.UnmarshalListOfMaps: %w", err)
-	}
-	return items, nil
+	return input, nil
 }
