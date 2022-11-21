@@ -38,7 +38,7 @@ func CreateAPIRequestVerifier(pubKey *ecdsa.PublicKey) LambdaFunc {
 			return APIResponseError(errors.NotAcceptable("outdated request")), nil
 		}
 
-		message := request.RequestContext.HTTP.Method + request.RequestContext.HTTP.Path + getAccessToken(request) + ts
+		message := request.RequestContext.HTTP.Method + request.RequestContext.HTTP.Path + GetAccessToken(request) + ts
 		hash := sha256.Sum256([]byte(message))
 
 		signature := httpkit.GetHeader(request.Headers, httpkit.KeySignature)
@@ -87,7 +87,7 @@ func APIResponseJSON(v any) *events.APIGatewayV2HTTPResponse {
 	return resp
 }
 
-func getAccessToken(request *events.APIGatewayV2HTTPRequest) string {
+func GetAccessToken(request *events.APIGatewayV2HTTPRequest) string {
 	accessToken := request.Headers[httpkit.KeyAuthorization]
 	if accessToken != "" {
 		return accessToken
