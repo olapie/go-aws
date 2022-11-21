@@ -1,11 +1,12 @@
 package awskit_test
 
 import (
-	"code.olapie.com/errors"
 	"context"
 	"os"
 	"testing"
 	"time"
+
+	"code.olapie.com/errors"
 
 	"code.olapie.com/awskit"
 	"github.com/google/uuid"

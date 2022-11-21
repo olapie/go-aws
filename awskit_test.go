@@ -2,11 +2,12 @@ package awskit_test
 
 import (
 	"context"
+	"os"
+	"testing"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
 func loadConfig(t *testing.T) aws.Config {

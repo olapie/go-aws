@@ -247,6 +247,30 @@ func (t *DDBTable[E, P, S]) QueryPage(ctx context.Context, partition P, startTok
 	return items, nextToken, nil
 }
 
+func (t *DDBTable[E, P, S]) QueryFirstOne(ctx context.Context, partition P) (item E, err error) {
+	items, _, err := t.QueryPage(ctx, partition, "", 1)
+	if err != nil {
+		return item, err
+	}
+	if len(items) == 0 {
+		return item, errors.NotExist
+	}
+	return items[0], nil
+}
+
+func (t *DDBTable[E, P, S]) QueryLastOne(ctx context.Context, partition P) (item E, err error) {
+	items, _, err := t.QueryPage(ctx, partition, "", 1, func(input *dynamodb.QueryInput) {
+		input.ScanIndexForward = aws.Bool(false)
+	})
+	if err != nil {
+		return item, err
+	}
+	if len(items) == 0 {
+		return item, errors.NotExist
+	}
+	return items[0], nil
+}
+
 func (t *DDBTable[E, P, S]) createQueryInput(partition P, limit int32) (*dynamodb.QueryInput, error) {
 	keyCond := expression.Key(t.primaryKey.PartitionKey).Equal(expression.Value(partition))
 	cols := conv.MustSlice(t.columns, expression.Name)
