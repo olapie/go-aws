@@ -35,7 +35,7 @@ func CreateAPIRequestVerifier(pubKey *ecdsa.PublicKey) LambdaFunc {
 		t, _ := conv.ToInt64(ts)
 		now := time.Now().Unix()
 		if conv.Abs(now-t) > 5 {
-			return APIResponseError(errors.NotAcceptable("outdated request")), nil
+			return APIErrorResponse(errors.NotAcceptable("outdated request")), nil
 		}
 
 		message := request.RequestContext.HTTP.Method + request.RequestContext.HTTP.Path + GetAccessToken(request) + ts
@@ -45,17 +45,17 @@ func CreateAPIRequestVerifier(pubKey *ecdsa.PublicKey) LambdaFunc {
 		sign, err := base64.StdEncoding.DecodeString(signature)
 		if err != nil {
 			log.S().Errorf("base64.DecodeString: signature=%s, %v", signature, err)
-			return APIResponseError(errors.NotAcceptable("malformed signature")), nil
+			return APIErrorResponse(errors.NotAcceptable("malformed signature")), nil
 		}
 
 		if ecdsa.VerifyASN1(pubKey, hash[:], sign) {
 			return nil, nil
 		}
-		return APIResponseError(errors.NotAcceptable("invalid signature")), nil
+		return APIErrorResponse(errors.NotAcceptable("invalid signature")), nil
 	}
 }
 
-func APIResponseError(err error) *events.APIGatewayV2HTTPResponse {
+func APIErrorResponse(err error) *events.APIGatewayV2HTTPResponse {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.Headers = make(map[string]string)
 	resp.Headers[httpkit.KeyContentType] = httpkit.Plain
@@ -69,7 +69,7 @@ func APIResponseError(err error) *events.APIGatewayV2HTTPResponse {
 	return resp
 }
 
-func APIResponseOK() *events.APIGatewayV2HTTPResponse {
+func APISuccessResponse() *events.APIGatewayV2HTTPResponse {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.Headers = make(map[string]string)
 	resp.Headers[httpkit.KeyContentType] = httpkit.Plain
@@ -78,7 +78,7 @@ func APIResponseOK() *events.APIGatewayV2HTTPResponse {
 	return resp
 }
 
-func APIResponseJSON(v any) *events.APIGatewayV2HTTPResponse {
+func APIJsonResponse(v any) *events.APIGatewayV2HTTPResponse {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = http.StatusOK
 	resp.Headers = make(map[string]string)
