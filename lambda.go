@@ -29,6 +29,28 @@ func NewLambdaRouter() *LambdaRouter {
 	}
 }
 
+func (r *LambdaRouter) Handle(ctx context.Context, request *events.APIGatewayV2HTTPRequest) (*events.APIGatewayV2HTTPResponse, error) {
+	httpInfo := request.RequestContext.HTTP
+	endpoint, _ := r.Match(httpInfo.Method, request.RawPath)
+	if endpoint != nil {
+		handler := endpoint.Handler()
+		for handler != nil {
+			resp, err := handler.Handler()(ctx, request)
+			if err != nil {
+				return APIErrorResponse(err), nil
+			}
+			if resp != nil {
+				return resp, nil
+			}
+			handler = handler.Next()
+		}
+	}
+	resp := new(events.APIGatewayV2HTTPResponse)
+	resp.StatusCode = http.StatusNotFound
+	resp.Body = http.StatusText(http.StatusNotFound)
+	return resp, nil
+}
+
 func CreateAPIRequestVerifier(pubKey *ecdsa.PublicKey) LambdaFunc {
 	return func(ctx context.Context, request *events.APIGatewayV2HTTPRequest) (*events.APIGatewayV2HTTPResponse, error) {
 		ts := httpkit.GetHeader(request.Headers, httpkit.KeyTimestamp)
