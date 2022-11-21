@@ -2,8 +2,11 @@ package awskit
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"sync"
 
 	"code.olapie.com/conv"
 	"code.olapie.com/errors"
@@ -47,7 +50,7 @@ func (pk *DDBPrimaryKey[P, S]) AttributeValue(p P, s S) map[string]types.Attribu
 		return attrs
 	}
 
-	if pk.SortKey == "" {
+	if !pk.HasSortKey() {
 		panic("sort key is not defined")
 	}
 
@@ -64,6 +67,17 @@ func (pk *DDBPrimaryKey[P, S]) AttributeValue(p P, s S) map[string]types.Attribu
 	return attrs
 }
 
+func (pk *DDBPrimaryKey[P, S]) HasSortKey() bool {
+	if pk.SortKey == "" {
+		return false
+	}
+	var s S
+	if _, ok := any(s).(DDBNoSortKey); ok {
+		return false
+	}
+	return true
+}
+
 // DDBTable is a wrapper of dynamodb table providing helpful operations
 // E - type of item
 // P - type of partition key
@@ -73,6 +87,9 @@ type DDBTable[E any, P DDBPartitionKeyConstraint, S DDBSortKeyConstraint] struct
 	tableName  string
 	primaryKey *DDBPrimaryKey[P, S]
 	columns    []string
+
+	lockForNextKeyTypes sync.Mutex
+	nextKeyTypes        map[string]reflect.Type
 }
 
 func NewDDBTable[E any, P DDBPartitionKeyConstraint, S DDBSortKeyConstraint](db *dynamodb.Client, tableName string, pk *DDBPrimaryKey[P, S], columns []string) *DDBTable[E, P, S] {
@@ -120,9 +137,9 @@ func (t *DDBTable[E, P, S]) BatchSave(ctx context.Context, items []E) error {
 	return errors.Wrapf(err, "dynamodb.BatchWriteItem")
 }
 
-func (t *DDBTable[E, P, S]) Get(ctx context.Context, partition P, rangeKey S) (E, error) {
+func (t *DDBTable[E, P, S]) Get(ctx context.Context, partition P, sortKey S) (E, error) {
 	input := &dynamodb.GetItemInput{
-		Key:       t.primaryKey.AttributeValue(partition, rangeKey),
+		Key:       t.primaryKey.AttributeValue(partition, sortKey),
 		TableName: aws.String(t.tableName),
 	}
 	var item E
@@ -142,9 +159,9 @@ func (t *DDBTable[E, P, S]) Get(ctx context.Context, partition P, rangeKey S) (E
 	return item, nil
 }
 
-func (t *DDBTable[E, P, S]) Delete(ctx context.Context, partition P, rangeKey S) error {
+func (t *DDBTable[E, P, S]) Delete(ctx context.Context, partition P, sortKey S) error {
 	input := &dynamodb.DeleteItemInput{
-		Key:       t.primaryKey.AttributeValue(partition, rangeKey),
+		Key:       t.primaryKey.AttributeValue(partition, sortKey),
 		TableName: aws.String(t.tableName),
 	}
 	_, err := t.client.DeleteItem(ctx, input)
@@ -167,10 +184,14 @@ func (t *DDBTable[E, P, S]) BatchDelete(ctx context.Context, partition P, sortKe
 	return err
 }
 
-func (t *DDBTable[E, P, S]) Query(ctx context.Context, partition P) ([]E, error) {
+func (t *DDBTable[E, P, S]) Query(ctx context.Context, partition P, options ...func(input *dynamodb.QueryInput)) ([]E, error) {
 	input, err := t.createQueryInput(partition, 1024)
 	if err != nil {
 		return nil, fmt.Errorf("createQueryInput: %w", err)
+	}
+
+	for _, op := range options {
+		op(input)
 	}
 
 	var items []E
@@ -190,21 +211,20 @@ func (t *DDBTable[E, P, S]) Query(ctx context.Context, partition P) ([]E, error)
 	return items, nil
 }
 
-func (t *DDBTable[E, P, S]) QueryPage(ctx context.Context, partition P, nextToken string, limit int) ([]E, string, error) {
+func (t *DDBTable[E, P, S]) QueryPage(ctx context.Context, partition P, nextToken string, limit int, options ...func(input *dynamodb.QueryInput)) ([]E, string, error) {
 	input, err := t.createQueryInput(partition, int32(limit))
 	if err != nil {
 		return nil, nextToken, fmt.Errorf("createQueryInput: %w", err)
 	}
 
+	for _, op := range options {
+		op(input)
+	}
+
 	if nextToken != "" {
-		var nextKeyMap map[string]string
-		err = json.Unmarshal([]byte(nextToken), &nextKeyMap)
+		input.ExclusiveStartKey, err = t.decodeNextKey(nextToken)
 		if err != nil {
-			return nil, nextToken, fmt.Errorf("json.Unmarshal nextToken: %w", err)
-		}
-		input.ExclusiveStartKey, err = attributevalue.MarshalMap(nextKeyMap)
-		if err != nil {
-			return nil, nextToken, fmt.Errorf("attributevalue.MarshalMap nextKeyMap: %w", err)
+			return nil, nextToken, fmt.Errorf("decodeNextKey: %w", err)
 		}
 	}
 
@@ -220,7 +240,10 @@ func (t *DDBTable[E, P, S]) QueryPage(ctx context.Context, partition P, nextToke
 	if len(output.LastEvaluatedKey) == 0 {
 		nextToken = ""
 	} else {
-		nextToken = conv.MustString(output.LastEvaluatedKey)
+		if t.nextKeyTypes == nil {
+			t.recordNextKeyTypes(output.LastEvaluatedKey)
+		}
+		nextToken = base64.StdEncoding.EncodeToString(conv.MustJSONBytes(output.LastEvaluatedKey))
 	}
 	return items, nextToken, nil
 }
@@ -243,4 +266,43 @@ func (t *DDBTable[E, P, S]) createQueryInput(partition P, limit int32) (*dynamod
 		Limit:                     aws.Int32(limit),
 	}
 	return input, nil
+}
+
+func (t *DDBTable[E, P, S]) recordNextKeyTypes(key map[string]types.AttributeValue) {
+	t.lockForNextKeyTypes.Lock()
+	if t.nextKeyTypes == nil {
+		t.nextKeyTypes = make(map[string]reflect.Type, len(key))
+		for name, attr := range key {
+			t.nextKeyTypes[name] = reflect.TypeOf(attr)
+		}
+	}
+	t.lockForNextKeyTypes.Unlock()
+}
+
+func (t *DDBTable[E, P, S]) decodeNextKey(token string) (map[string]types.AttributeValue, error) {
+	jsonBytes, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return nil, fmt.Errorf("base64.DecodeString: %w", err)
+	}
+	var nextKeyMap map[string]any
+	err = json.Unmarshal(jsonBytes, &nextKeyMap)
+	if err != nil {
+		return nil, fmt.Errorf("json.Unmarshal: %w", err)
+	}
+
+	key := make(map[string]types.AttributeValue, len(t.nextKeyTypes))
+	for name, val := range nextKeyMap {
+		typ, ok := t.nextKeyTypes[name]
+		if !ok {
+			return nil, errors.BadRequest("invalid token")
+		}
+		attr := reflect.New(typ)
+		err = json.Unmarshal(conv.MustJSONBytes(val), attr.Interface())
+		if err != nil {
+			return nil, errors.BadRequest("invalid token")
+		}
+		key[name] = attr.Elem().Interface().(types.AttributeValue)
+	}
+
+	return key, nil
 }
