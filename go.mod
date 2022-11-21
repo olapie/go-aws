@@ -6,6 +6,8 @@ require (
 	code.olapie.com/conv v1.2.3
 	code.olapie.com/errors v1.0.7
 	code.olapie.com/ola/httpkit v1.1.4
+	code.olapie.com/router v1.0.0
+	github.com/aws/aws-lambda-go v1.35.0
 	github.com/aws/aws-sdk-go-v2 v1.17.1
 	github.com/aws/aws-sdk-go-v2/config v1.18.2
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.10.4
