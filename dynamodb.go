@@ -211,7 +211,7 @@ func (t *DDBTable[E, P, S]) Query(ctx context.Context, partition P, options ...f
 	return items, nil
 }
 
-func (t *DDBTable[E, P, S]) QueryPage(ctx context.Context, partition P, nextToken string, limit int, options ...func(input *dynamodb.QueryInput)) ([]E, string, error) {
+func (t *DDBTable[E, P, S]) QueryPage(ctx context.Context, partition P, startToken string, limit int, options ...func(input *dynamodb.QueryInput)) (items []E, nextToken string, err error) {
 	input, err := t.createQueryInput(partition, int32(limit))
 	if err != nil {
 		return nil, nextToken, fmt.Errorf("createQueryInput: %w", err)
@@ -221,10 +221,10 @@ func (t *DDBTable[E, P, S]) QueryPage(ctx context.Context, partition P, nextToke
 		op(input)
 	}
 
-	if nextToken != "" {
-		input.ExclusiveStartKey, err = t.decodeNextKey(nextToken)
+	if startToken != "" {
+		input.ExclusiveStartKey, err = t.decodeStartKey(startToken)
 		if err != nil {
-			return nil, nextToken, fmt.Errorf("decodeNextKey: %w", err)
+			return nil, nextToken, fmt.Errorf("decodeStartKey: %w", err)
 		}
 	}
 
@@ -232,7 +232,6 @@ func (t *DDBTable[E, P, S]) QueryPage(ctx context.Context, partition P, nextToke
 	if err != nil {
 		return nil, nextToken, fmt.Errorf("dynamodb.Query: %w", err)
 	}
-	var items []E
 	err = attributevalue.UnmarshalListOfMaps(output.Items, &items)
 	if err != nil {
 		return nil, nextToken, fmt.Errorf("attributevalue.UnmarshalListOfMaps: %w", err)
@@ -279,7 +278,7 @@ func (t *DDBTable[E, P, S]) recordNextKeyTypes(key map[string]types.AttributeVal
 	t.lockForNextKeyTypes.Unlock()
 }
 
-func (t *DDBTable[E, P, S]) decodeNextKey(token string) (map[string]types.AttributeValue, error) {
+func (t *DDBTable[E, P, S]) decodeStartKey(token string) (map[string]types.AttributeValue, error) {
 	jsonBytes, err := base64.StdEncoding.DecodeString(token)
 	if err != nil {
 		return nil, fmt.Errorf("base64.DecodeString: %w", err)
