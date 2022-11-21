@@ -1,19 +1,20 @@
 package awskit
 
 import (
-	"code.olapie.com/conv"
-	"code.olapie.com/errors"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"reflect"
+
+	"code.olapie.com/conv"
+	"code.olapie.com/errors"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"golang.org/x/exp/constraints"
-	"reflect"
 )
 
 // DDBNoSortKey means table doesn't have sort key

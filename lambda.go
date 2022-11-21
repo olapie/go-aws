@@ -1,10 +1,6 @@
 package awskit
 
 import (
-	"code.olapie.com/conv"
-	"code.olapie.com/errors"
-	"code.olapie.com/log"
-	"code.olapie.com/ola/httpkit"
 	"context"
 	"crypto/ecdsa"
 	"crypto/sha256"
@@ -12,6 +8,11 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"code.olapie.com/conv"
+	"code.olapie.com/errors"
+	"code.olapie.com/log"
+	"code.olapie.com/ola/httpkit"
 
 	"code.olapie.com/router"
 	"github.com/aws/aws-lambda-go/events"
