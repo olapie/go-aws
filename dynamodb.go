@@ -1,21 +1,19 @@
 package awskit
 
 import (
+	"code.olapie.com/conv"
+	"code.olapie.com/errors"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"reflect"
-	"sync"
-
-	"code.olapie.com/conv"
-	"code.olapie.com/errors"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"golang.org/x/exp/constraints"
+	"reflect"
 )
 
 // DDBNoSortKey means table doesn't have sort key
@@ -88,17 +86,25 @@ type DDBTable[E any, P DDBPartitionKeyConstraint, S DDBSortKeyConstraint] struct
 	primaryKey *DDBPrimaryKey[P, S]
 	columns    []string
 
-	lockForNextKeyTypes sync.Mutex
-	nextKeyTypes        map[string]reflect.Type
+	nextKeyTypes map[string]reflect.Type
 }
 
 func NewDDBTable[E any, P DDBPartitionKeyConstraint, S DDBSortKeyConstraint](db *dynamodb.Client, tableName string, pk *DDBPrimaryKey[P, S], columns []string) *DDBTable[E, P, S] {
-	return &DDBTable[E, P, S]{
+	t := &DDBTable[E, P, S]{
 		client:     db,
 		tableName:  tableName,
 		primaryKey: pk,
 		columns:    columns,
 	}
+
+	var p P
+	var s S
+	key := pk.AttributeValue(p, s)
+	t.nextKeyTypes = make(map[string]reflect.Type, len(key))
+	for name, attr := range key {
+		t.nextKeyTypes[name] = reflect.TypeOf(attr)
+	}
+	return t
 }
 
 func (t *DDBTable[E, P, S]) Save(ctx context.Context, item E) error {
@@ -239,9 +245,6 @@ func (t *DDBTable[E, P, S]) QueryPage(ctx context.Context, partition P, startTok
 	if len(output.LastEvaluatedKey) == 0 {
 		nextToken = ""
 	} else {
-		if t.nextKeyTypes == nil {
-			t.recordNextKeyTypes(output.LastEvaluatedKey)
-		}
 		nextToken = base64.StdEncoding.EncodeToString(conv.MustJSONBytes(output.LastEvaluatedKey))
 	}
 	return items, nextToken, nil
@@ -289,17 +292,6 @@ func (t *DDBTable[E, P, S]) createQueryInput(partition P, limit int32) (*dynamod
 		Limit:                     aws.Int32(limit),
 	}
 	return input, nil
-}
-
-func (t *DDBTable[E, P, S]) recordNextKeyTypes(key map[string]types.AttributeValue) {
-	t.lockForNextKeyTypes.Lock()
-	if t.nextKeyTypes == nil {
-		t.nextKeyTypes = make(map[string]reflect.Type, len(key))
-		for name, attr := range key {
-			t.nextKeyTypes[name] = reflect.TypeOf(attr)
-		}
-	}
-	t.lockForNextKeyTypes.Unlock()
 }
 
 func (t *DDBTable[E, P, S]) decodeStartKey(token string) (map[string]types.AttributeValue, error) {
