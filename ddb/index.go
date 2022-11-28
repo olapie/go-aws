@@ -15,10 +15,9 @@ func NewIndex[E any, P PartitionKeyConstraint, S SortKeyConstraint](
 	tableName string,
 	indexName string,
 	pk *PrimaryKeyDefinition[P, S],
-	columns []string,
 ) *Index[E, P, S] {
 	i := &Index[E, P, S]{
-		table: NewTable[E, P, S](db, tableName, pk, columns),
+		table: NewTable[E, P, S](db, tableName, pk),
 	}
 	i.table.indexName = &indexName
 	return i

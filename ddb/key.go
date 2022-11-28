@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"golang.org/x/exp/constraints"
 	"reflect"
@@ -26,14 +27,31 @@ type PrimaryKeyDefinition[P PartitionKeyConstraint, S SortKeyConstraint] struct 
 	partitionKeyName string
 	sortKeyName      string
 
-	prototype map[string]reflect.Type
+	prototype     map[string]reflect.Type
+	attrNotExists *string
 }
 
 func NewPrimaryKeyDefinition[P PartitionKeyConstraint, S SortKeyConstraint](partitionKeyName string, sortKeyName string) *PrimaryKeyDefinition[P, S] {
-	return &PrimaryKeyDefinition[P, S]{
+	d := &PrimaryKeyDefinition[P, S]{
 		partitionKeyName: partitionKeyName,
 		sortKeyName:      sortKeyName,
 	}
+
+	var p P
+	var s S
+	key := d.NewKey(p, s).AttributeValue()
+	d.prototype = make(map[string]reflect.Type, len(key))
+	for name, attr := range key {
+		d.prototype[name] = reflect.TypeOf(attr)
+	}
+
+	attrNotExists := "attribute_not_exists(" + partitionKeyName
+	if sortKeyName != "" {
+		attrNotExists += "," + sortKeyName
+	}
+	attrNotExists += ")"
+	d.attrNotExists = aws.String(attrNotExists)
+	return d
 }
 
 func (d *PrimaryKeyDefinition[P, S]) NewKey(p P, s S) *PrimaryKey[P, S] {
@@ -96,7 +114,7 @@ func (d *PrimaryKeyDefinition[P, S]) DecodeStringToValue(s string) (map[string]t
 
 	key := make(map[string]types.AttributeValue, len(d.Prototype()))
 	for name, val := range nameToValue {
-		typ, ok := d.prototype[name]
+		typ, ok := d.Prototype()[name]
 		if !ok {
 			return nil, errors.BadRequest("invalid token")
 		}
