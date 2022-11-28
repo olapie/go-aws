@@ -50,6 +50,17 @@ func (t *DDBTable[E, P, S]) Save(ctx context.Context, item E) error {
 }
 
 func (t *DDBTable[E, P, S]) BatchSave(ctx context.Context, items []E) error {
+	requests, err := t.PrepareWriteRequests(ctx, items)
+	if err != nil {
+		return fmt.Errorf("PrepareWriteRequests: %w", err)
+	}
+
+	input := &dynamodb.BatchWriteItemInput{RequestItems: requests}
+	_, err = t.client.BatchWriteItem(ctx, input)
+	return errors.Wrapf(err, "dynamodb.BatchWriteItem")
+}
+
+func (t *DDBTable[E, P, S]) PrepareWriteRequests(ctx context.Context, items []E) (map[string][]types.WriteRequest, error) {
 	requests, err := conv.Slice(items, func(item E) (types.WriteRequest, error) {
 		var req types.WriteRequest
 		attrs, err := attributevalue.MarshalMap(item)
@@ -61,14 +72,46 @@ func (t *DDBTable[E, P, S]) BatchSave(ctx context.Context, items []E) error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("convert items to WriteRequest list: %w", err)
+		return nil, fmt.Errorf("convert items to WriteRequest list: %w", err)
+	}
+	return map[string][]types.WriteRequest{
+		t.tableName: requests,
+	}, nil
+}
+
+func (t *DDBTable[E, P, S]) BatchGet(ctx context.Context, partitions []P, sortKeys []S) ([]E, error) {
+	var keysAndAttrs types.KeysAndAttributes
+	keysAndAttrs.Keys = make([]map[string]types.AttributeValue, len(partitions))
+	for i, p := range partitions {
+		var sk S
+		if sortKeys != nil {
+			sk = sortKeys[i]
+		}
+		keysAndAttrs.Keys[i] = t.primaryKey.AttributeValue(p, sk)
+	}
+	input := &dynamodb.BatchGetItemInput{
+		RequestItems: map[string]types.KeysAndAttributes{t.tableName: keysAndAttrs},
 	}
 
-	input := &dynamodb.BatchWriteItemInput{RequestItems: map[string][]types.WriteRequest{
-		t.tableName: requests,
-	}}
-	_, err = t.client.BatchWriteItem(ctx, input)
-	return errors.Wrapf(err, "dynamodb.BatchWriteItem")
+	output, err := t.client.BatchGetItem(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("client.BatchGetItem: %w", err)
+	}
+
+	if len(output.Responses) == 0 {
+		return nil, nil
+	}
+	maps := output.Responses[t.tableName]
+	if len(maps) == 0 {
+		return nil, nil
+	}
+
+	var items []E
+	err = attributevalue.UnmarshalListOfMaps(maps, &items)
+	if err != nil {
+		return nil, fmt.Errorf("attributevalue.UnmarshalListOfMaps: %w", err)
+	}
+	return items, nil
 }
 
 func (t *DDBTable[E, P, S]) Get(ctx context.Context, partition P, sortKey S) (E, error) {
