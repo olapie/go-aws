@@ -76,7 +76,8 @@ func (t *Table[E, P, S]) BatchPut(ctx context.Context, items []E) error {
 	return errors.Wrapf(err, "dynamodb.BatchWriteItem")
 }
 
-func (t *Table[E, P, S]) BatchGet(ctx context.Context, pks []*PrimaryKey[P, S]) ([]E, error) {
+func (t *Table[E, P, S]) BatchGet(ctx context.Context, partitionKeys []P, sortKeys []S) ([]E, error) {
+	pks := t.pkDefinition.NewKeys(partitionKeys, sortKeys)
 	var keysAndAttrs types.KeysAndAttributes
 	keysAndAttrs.Keys = make([]map[string]types.AttributeValue, len(pks))
 	for i, pk := range pks {
@@ -107,9 +108,9 @@ func (t *Table[E, P, S]) BatchGet(ctx context.Context, pks []*PrimaryKey[P, S]) 
 	return items, nil
 }
 
-func (t *Table[E, P, S]) Get(ctx context.Context, pk *PrimaryKey[P, S]) (E, error) {
+func (t *Table[E, P, S]) Get(ctx context.Context, partitionKey P, sortKey S) (E, error) {
 	input := &dynamodb.GetItemInput{
-		Key:       pk.AttributeValue(),
+		Key:       t.pkDefinition.NewKey(partitionKey, sortKey).AttributeValue(),
 		TableName: aws.String(t.tableName),
 	}
 	var item E
@@ -129,9 +130,9 @@ func (t *Table[E, P, S]) Get(ctx context.Context, pk *PrimaryKey[P, S]) (E, erro
 	return item, nil
 }
 
-func (t *Table[E, P, S]) Delete(ctx context.Context, pk *PrimaryKey[P, S]) error {
+func (t *Table[E, P, S]) Delete(ctx context.Context, partitionKey P, sortKey S) error {
 	input := &dynamodb.DeleteItemInput{
-		Key:       pk.AttributeValue(),
+		Key:       t.pkDefinition.NewKey(partitionKey, sortKey).AttributeValue(),
 		TableName: aws.String(t.tableName),
 	}
 	_, err := t.client.DeleteItem(ctx, input)
@@ -265,7 +266,7 @@ func (t *Table[E, P, S]) QueryLastOne(ctx context.Context, partition P) (item E,
 }
 
 func (t *Table[E, P, S]) createQueryInput(partition P, limit int32) (*dynamodb.QueryInput, error) {
-	keyCond := expression.Key(t.pkDefinition.PartitionKeyName).Equal(expression.Value(partition))
+	keyCond := expression.Key(t.pkDefinition.partitionKeyName).Equal(expression.Value(partition))
 	cols := conv.MustSlice(t.columns, expression.Name)
 	proj := expression.NamesList(cols[0], cols[1:]...)
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCond).WithProjection(proj).Build()

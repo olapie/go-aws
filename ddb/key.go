@@ -23,10 +23,17 @@ type SortKeyConstraint interface {
 }
 
 type PrimaryKeyDefinition[P PartitionKeyConstraint, S SortKeyConstraint] struct {
-	PartitionKeyName string
-	SortKeyName      string
+	partitionKeyName string
+	sortKeyName      string
 
 	prototype map[string]reflect.Type
+}
+
+func NewPrimaryKeyDefinition[P PartitionKeyConstraint, S SortKeyConstraint](partitionKeyName string, sortKeyName string) *PrimaryKeyDefinition[P, S] {
+	return &PrimaryKeyDefinition[P, S]{
+		partitionKeyName: partitionKeyName,
+		sortKeyName:      sortKeyName,
+	}
 }
 
 func (d *PrimaryKeyDefinition[P, S]) NewKey(p P, s S) *PrimaryKey[P, S] {
@@ -37,8 +44,22 @@ func (d *PrimaryKeyDefinition[P, S]) NewKey(p P, s S) *PrimaryKey[P, S] {
 	}
 }
 
+func (d *PrimaryKeyDefinition[P, S]) NewKeys(partitionKeys []P, sortKeys []S) []*PrimaryKey[P, S] {
+	pks := make([]*PrimaryKey[P, S], len(partitionKeys))
+	for i, p := range partitionKeys {
+		pks[i] = &PrimaryKey[P, S]{
+			PartitionKey: p,
+			definition:   d,
+		}
+		if sortKeys != nil {
+			pks[i].SortKey = sortKeys[i]
+		}
+	}
+	return pks
+}
+
 func (d *PrimaryKeyDefinition[P, S]) HasSortKey() bool {
-	if d.SortKeyName == "" {
+	if d.sortKeyName == "" {
 		return false
 	}
 	var s S
@@ -104,11 +125,11 @@ type PrimaryKey[P PartitionKeyConstraint, S SortKeyConstraint] struct {
 func (pk *PrimaryKey[P, S]) AttributeValue() map[string]types.AttributeValue {
 	attrs := make(map[string]types.AttributeValue)
 	if str, ok := any(pk.PartitionKey).(string); ok {
-		attrs[pk.definition.PartitionKeyName] = &types.AttributeValueMemberS{
+		attrs[pk.definition.partitionKeyName] = &types.AttributeValueMemberS{
 			Value: str,
 		}
 	} else {
-		attrs[pk.definition.PartitionKeyName] = &types.AttributeValueMemberN{
+		attrs[pk.definition.partitionKeyName] = &types.AttributeValueMemberN{
 			Value: fmt.Sprint(pk.PartitionKey),
 		}
 	}
@@ -122,11 +143,11 @@ func (pk *PrimaryKey[P, S]) AttributeValue() map[string]types.AttributeValue {
 	}
 
 	if str, ok := any(pk.SortKey).(string); ok {
-		attrs[pk.definition.SortKeyName] = &types.AttributeValueMemberS{
+		attrs[pk.definition.sortKeyName] = &types.AttributeValueMemberS{
 			Value: str,
 		}
 	} else {
-		attrs[pk.definition.SortKeyName] = &types.AttributeValueMemberN{
+		attrs[pk.definition.sortKeyName] = &types.AttributeValueMemberN{
 			Value: fmt.Sprint(pk.SortKey),
 		}
 	}
