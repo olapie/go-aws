@@ -2,10 +2,7 @@ package awskit
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"code.olapie.com/conv"
 	"code.olapie.com/errors"
@@ -14,68 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"golang.org/x/exp/constraints"
 )
-
-// DDBNoSortKey means table doesn't have sort key
-type DDBNoSortKey *any
-
-type DDBPartitionKeyConstraint interface {
-	~string | constraints.Signed | constraints.Unsigned
-}
-
-type DDBSortKeyConstraint interface {
-	DDBPartitionKeyConstraint | DDBNoSortKey
-}
-
-type DDBPrimaryKey[P DDBPartitionKeyConstraint, S DDBSortKeyConstraint] struct {
-	PartitionKey string
-	SortKey      string
-}
-
-func (pk *DDBPrimaryKey[P, S]) AttributeValue(p P, s S) map[string]types.AttributeValue {
-	attrs := make(map[string]types.AttributeValue)
-	if str, ok := any(p).(string); ok {
-		attrs[pk.PartitionKey] = &types.AttributeValueMemberS{
-			Value: str,
-		}
-	} else {
-		attrs[pk.PartitionKey] = &types.AttributeValueMemberN{
-			Value: fmt.Sprint(p),
-		}
-	}
-
-	if _, ok := any(s).(DDBNoSortKey); ok {
-		return attrs
-	}
-
-	if !pk.HasSortKey() {
-		panic("sort key is not defined")
-	}
-
-	if str, ok := any(s).(string); ok {
-		attrs[pk.SortKey] = &types.AttributeValueMemberS{
-			Value: str,
-		}
-	} else {
-		attrs[pk.SortKey] = &types.AttributeValueMemberN{
-			Value: fmt.Sprint(s),
-		}
-	}
-
-	return attrs
-}
-
-func (pk *DDBPrimaryKey[P, S]) HasSortKey() bool {
-	if pk.SortKey == "" {
-		return false
-	}
-	var s S
-	if _, ok := any(s).(DDBNoSortKey); ok {
-		return false
-	}
-	return true
-}
 
 // DDBTable is a wrapper of dynamodb table providing helpful operations
 // E - type of item
@@ -84,10 +20,9 @@ func (pk *DDBPrimaryKey[P, S]) HasSortKey() bool {
 type DDBTable[E any, P DDBPartitionKeyConstraint, S DDBSortKeyConstraint] struct {
 	client     *dynamodb.Client
 	tableName  string
+	indexName  *string
 	primaryKey *DDBPrimaryKey[P, S]
 	columns    []string
-
-	nextKeyTypes map[string]reflect.Type
 }
 
 func NewDDBTable[E any, P DDBPartitionKeyConstraint, S DDBSortKeyConstraint](db *dynamodb.Client, tableName string, pk *DDBPrimaryKey[P, S], columns []string) *DDBTable[E, P, S] {
@@ -96,14 +31,6 @@ func NewDDBTable[E any, P DDBPartitionKeyConstraint, S DDBSortKeyConstraint](db 
 		tableName:  tableName,
 		primaryKey: pk,
 		columns:    columns,
-	}
-
-	var p P
-	var s S
-	key := pk.AttributeValue(p, s)
-	t.nextKeyTypes = make(map[string]reflect.Type, len(key))
-	for name, attr := range key {
-		t.nextKeyTypes[name] = reflect.TypeOf(attr)
 	}
 	return t
 }
@@ -229,7 +156,7 @@ func (t *DDBTable[E, P, S]) QueryPage(ctx context.Context, partition P, startTok
 	}
 
 	if startToken != "" {
-		input.ExclusiveStartKey, err = t.decodeStartKey(startToken)
+		input.ExclusiveStartKey, err = t.primaryKey.DecodeAttributeValue(startToken)
 		if err != nil {
 			return nil, nextToken, fmt.Errorf("decodeStartKey: %w", err)
 		}
@@ -246,7 +173,7 @@ func (t *DDBTable[E, P, S]) QueryPage(ctx context.Context, partition P, startTok
 	if len(output.LastEvaluatedKey) == 0 {
 		nextToken = ""
 	} else {
-		nextToken = base64.StdEncoding.EncodeToString(conv.MustJSONBytes(output.LastEvaluatedKey))
+		nextToken = t.primaryKey.EncodeAttributeValue(output.LastEvaluatedKey)
 	}
 	return items, nextToken, nil
 }
@@ -290,35 +217,8 @@ func (t *DDBTable[E, P, S]) createQueryInput(partition P, limit int32) (*dynamod
 		KeyConditionExpression:    expr.KeyCondition(),
 		ProjectionExpression:      expr.Projection(),
 		TableName:                 aws.String(t.tableName),
+		IndexName:                 t.indexName,
 		Limit:                     aws.Int32(limit),
 	}
 	return input, nil
-}
-
-func (t *DDBTable[E, P, S]) decodeStartKey(token string) (map[string]types.AttributeValue, error) {
-	jsonBytes, err := base64.StdEncoding.DecodeString(token)
-	if err != nil {
-		return nil, fmt.Errorf("base64.DecodeString: %w", err)
-	}
-	var nextKeyMap map[string]any
-	err = json.Unmarshal(jsonBytes, &nextKeyMap)
-	if err != nil {
-		return nil, fmt.Errorf("json.Unmarshal: %w", err)
-	}
-
-	key := make(map[string]types.AttributeValue, len(t.nextKeyTypes))
-	for name, val := range nextKeyMap {
-		typ, ok := t.nextKeyTypes[name]
-		if !ok {
-			return nil, errors.BadRequest("invalid token")
-		}
-		attr := reflect.New(typ)
-		err = json.Unmarshal(conv.MustJSONBytes(val), attr.Interface())
-		if err != nil {
-			return nil, errors.BadRequest("invalid token")
-		}
-		key[name] = attr.Elem().Interface().(types.AttributeValue)
-	}
-
-	return key, nil
 }
