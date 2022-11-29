@@ -1,7 +1,7 @@
 ### Dynamodb
 1. Primary Key  
-   It is a composite key of partition key and sort key.  
-   * Partition Key (Hash Key)
+   A composite key which consists of partition key and sort key.  
+   * Partition Key (Hash Key) : required 
    * Sort Key (Range Key) : optional
 2. Main types of actions
    * Single-item requests  
