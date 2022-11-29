@@ -1,15 +1,17 @@
 package ddb
 
 import (
-	"code.olapie.com/conv"
-	"code.olapie.com/errors"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strings"
+
+	"code.olapie.com/conv"
+	"code.olapie.com/errors"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"golang.org/x/exp/constraints"
-	"reflect"
 )
 
 // NoKey means table doesn't have sort key
@@ -29,6 +31,7 @@ type PrimaryKeyDefinition[P PartitionKeyConstraint, S SortKeyConstraint] struct 
 
 	prototype     map[string]reflect.Type
 	attrNotExists *string
+	attrExists    *string
 }
 
 func NewPrimaryKeyDefinition[P PartitionKeyConstraint, S SortKeyConstraint](partitionKeyName string, sortKeyName string) *PrimaryKeyDefinition[P, S] {
@@ -51,6 +54,7 @@ func NewPrimaryKeyDefinition[P PartitionKeyConstraint, S SortKeyConstraint](part
 	}
 	attrNotExists += ")"
 	d.attrNotExists = aws.String(attrNotExists)
+	d.attrExists = aws.String(strings.Replace(attrNotExists, "attribute_not_exists", "attribute_exists", 1))
 	return d
 }
 

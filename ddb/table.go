@@ -52,37 +52,16 @@ func (t *Table[E, P, S]) PrimaryKeyDefinition() *PrimaryKeyDefinition[P, S] {
 	return t.pkDefinition
 }
 
-func (t *Table[E, P, S]) PutNX(ctx context.Context, item E) error {
-	attrs, err := attributevalue.MarshalMap(item)
-	if err != nil {
-		return fmt.Errorf("attributevalue.MarshalMap: %w", err)
-	}
-	expr := t.pkDefinition.partitionKeyName
-	if t.pkDefinition.sortKeyName != "" {
-		expr += "," + t.pkDefinition.sortKeyName
-	}
-	input := &dynamodb.PutItemInput{
-		Item:                   attrs,
-		ReturnConsumedCapacity: types.ReturnConsumedCapacityTotal,
-		TableName:              aws.String(t.tableName),
-		ConditionExpression:    t.pkDefinition.attrNotExists,
-	}
-	_, err = t.client.PutItem(ctx, input)
-	return errors.Wrapf(err, "client.PutItem")
+func (t *Table[E, P, S]) Insert(ctx context.Context, item E) error {
+	return t.put(ctx, item, t.pkDefinition.attrNotExists)
+}
+
+func (t *Table[E, P, S]) Update(ctx context.Context, item E) error {
+	return t.put(ctx, item, t.pkDefinition.attrExists)
 }
 
 func (t *Table[E, P, S]) Put(ctx context.Context, item E) error {
-	attrs, err := attributevalue.MarshalMap(item)
-	if err != nil {
-		return fmt.Errorf("attributevalue.MarshalMap: %w", err)
-	}
-	input := &dynamodb.PutItemInput{
-		Item:                   attrs,
-		ReturnConsumedCapacity: types.ReturnConsumedCapacityTotal,
-		TableName:              aws.String(t.tableName),
-	}
-	_, err = t.client.PutItem(ctx, input)
-	return errors.Wrapf(err, "dynamodb.PutItem")
+	return t.put(ctx, item, nil)
 }
 
 func (t *Table[E, P, S]) BatchPut(ctx context.Context, items []E) error {
@@ -186,8 +165,30 @@ func (t *Table[E, P, S]) PrepareTransactPut(ctx context.Context, puts ...E) ([]t
 	return t.prepareTransactPut(ctx, puts, nil)
 }
 
-func (t *Table[E, P, S]) PrepareTransactPutNX(ctx context.Context, puts ...E) ([]types.TransactWriteItem, error) {
+func (t *Table[E, P, S]) PrepareTransactInsert(ctx context.Context, puts ...E) ([]types.TransactWriteItem, error) {
 	return t.prepareTransactPut(ctx, puts, t.pkDefinition.attrNotExists)
+}
+
+func (t *Table[E, P, S]) PrepareTransactUpdate(ctx context.Context, puts ...E) ([]types.TransactWriteItem, error) {
+	return t.prepareTransactPut(ctx, puts, t.pkDefinition.attrExists)
+}
+
+func (t *Table[E, P, S]) PrepareTransactDelete(ctx context.Context, partitionKeys []P, sortKeys []S) ([]types.TransactWriteItem, error) {
+	deletes := make([]types.TransactWriteItem, 0, len(partitionKeys))
+	for i, p := range partitionKeys {
+		var s S
+		if sortKeys != nil {
+			s = sortKeys[i]
+		}
+		pk := t.pkDefinition.NewKey(p, s)
+		deletes = append(deletes, types.TransactWriteItem{
+			Delete: &types.Delete{
+				Key:       pk.AttributeValue(),
+				TableName: aws.String(t.tableName),
+			},
+		})
+	}
+	return deletes, nil
 }
 
 func (t *Table[E, P, S]) Query(ctx context.Context, partition P, options ...func(input *dynamodb.QueryInput)) ([]E, error) {
@@ -215,24 +216,6 @@ func (t *Table[E, P, S]) Query(ctx context.Context, partition P, options ...func
 		items = append(items, pageItems...)
 	}
 	return items, nil
-}
-
-func (t *Table[E, P, S]) PrepareTransactDelete(ctx context.Context, partitionKeys []P, sortKeys []S) ([]types.TransactWriteItem, error) {
-	deletes := make([]types.TransactWriteItem, 0, len(partitionKeys))
-	for i, p := range partitionKeys {
-		var s S
-		if sortKeys != nil {
-			s = sortKeys[i]
-		}
-		pk := t.pkDefinition.NewKey(p, s)
-		deletes = append(deletes, types.TransactWriteItem{
-			Delete: &types.Delete{
-				Key:       pk.AttributeValue(),
-				TableName: aws.String(t.tableName),
-			},
-		})
-	}
-	return deletes, nil
 }
 
 func (t *Table[E, P, S]) QueryPage(ctx context.Context, partition P, startToken string, limit int, options ...func(input *dynamodb.QueryInput)) (items []E, nextToken string, err error) {
@@ -328,6 +311,22 @@ func (t *Table[E, P, S]) batchDelete(ctx context.Context, pks []*PrimaryKey[P, S
 	_, err := t.client.BatchWriteItem(ctx, input)
 	return err
 }
+
+func (t *Table[E, P, S]) put(ctx context.Context, item E, conditionExpression *string) error {
+	attrs, err := attributevalue.MarshalMap(item)
+	if err != nil {
+		return fmt.Errorf("attributevalue.MarshalMap: %w", err)
+	}
+	input := &dynamodb.PutItemInput{
+		Item:                   attrs,
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityTotal,
+		TableName:              aws.String(t.tableName),
+		ConditionExpression:    conditionExpression,
+	}
+	_, err = t.client.PutItem(ctx, input)
+	return errors.Wrapf(err, "dynamodb.PutItem")
+}
+
 func (t *Table[E, P, S]) prepareTransactPut(ctx context.Context, puts []E, conditionExpression *string) ([]types.TransactWriteItem, error) {
 	writeItems := make([]types.TransactWriteItem, 0, len(puts))
 	for _, put := range puts {
