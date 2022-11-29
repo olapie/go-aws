@@ -48,11 +48,10 @@ func NewPrimaryKeyDefinition[P PartitionKeyConstraint, S SortKeyConstraint](part
 		d.prototype[name] = reflect.TypeOf(attr)
 	}
 
-	attrNotExists := "attribute_not_exists(" + partitionKeyName
+	attrNotExists := "attribute_not_exists(" + partitionKeyName + ")"
 	if sortKeyName != "" {
-		attrNotExists += "," + sortKeyName
+		attrNotExists += " AND attribute_not_exists(" + sortKeyName + ")"
 	}
-	attrNotExists += ")"
 	d.attrNotExists = aws.String(attrNotExists)
 	d.attrExists = aws.String(strings.Replace(attrNotExists, "attribute_not_exists", "attribute_exists", 1))
 	return d

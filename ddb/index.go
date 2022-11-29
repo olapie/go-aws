@@ -23,18 +23,18 @@ func NewIndex[E any, P PartitionKeyConstraint, S SortKeyConstraint](
 	return i
 }
 
-func (i *Index[E, P, S]) Query(ctx context.Context, partition P, options ...func(input *dynamodb.QueryInput)) ([]E, error) {
-	return i.table.Query(ctx, partition, options...)
+func (i *Index[E, P, S]) Query(ctx context.Context, partition P, sortKey *S, options ...func(input *dynamodb.QueryInput)) ([]E, error) {
+	return i.table.Query(ctx, partition, sortKey, options...)
 }
 
-func (i *Index[E, P, S]) QueryPage(ctx context.Context, partition P, startToken string, limit int, options ...func(input *dynamodb.QueryInput)) (items []E, nextToken string, err error) {
-	return i.table.QueryPage(ctx, partition, startToken, limit, options...)
+func (i *Index[E, P, S]) QueryPage(ctx context.Context, partition P, sortKey *S, startToken string, limit int, options ...func(input *dynamodb.QueryInput)) (items []E, nextToken string, err error) {
+	return i.table.QueryPage(ctx, partition, sortKey, startToken, limit, options...)
 }
 
-func (i *Index[E, P, S]) QueryFirstOne(ctx context.Context, partition P) (item E, err error) {
-	return i.table.QueryFirstOne(ctx, partition)
+func (i *Index[E, P, S]) QueryFirstOne(ctx context.Context, partition P, sortKey *S) (item E, err error) {
+	return i.table.QueryFirstOne(ctx, partition, sortKey)
 }
 
-func (i *Index[E, P, S]) QueryLastOne(ctx context.Context, partition P) (item E, err error) {
-	return i.table.QueryLastOne(ctx, partition)
+func (i *Index[E, P, S]) QueryLastOne(ctx context.Context, partition P, sortKey *S) (item E, err error) {
+	return i.table.QueryLastOne(ctx, partition, sortKey)
 }

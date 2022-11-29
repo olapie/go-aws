@@ -161,6 +161,7 @@ func (t *Table[E, P, S]) BatchDelete(ctx context.Context, partitionKeys []P, sor
 	pks := t.pkDefinition.NewKeys(partitionKeys, sortKeys)
 	return t.batchDelete(ctx, pks)
 }
+
 func (t *Table[E, P, S]) PrepareTransactPut(ctx context.Context, puts ...E) ([]types.TransactWriteItem, error) {
 	return t.prepareTransactPut(ctx, puts, nil)
 }
@@ -191,8 +192,8 @@ func (t *Table[E, P, S]) PrepareTransactDelete(ctx context.Context, partitionKey
 	return deletes, nil
 }
 
-func (t *Table[E, P, S]) Query(ctx context.Context, partition P, options ...func(input *dynamodb.QueryInput)) ([]E, error) {
-	input, err := t.createQueryInput(partition, 1024)
+func (t *Table[E, P, S]) Query(ctx context.Context, partition P, sortKey *S, options ...func(input *dynamodb.QueryInput)) ([]E, error) {
+	input, err := t.createQueryInput(partition, sortKey, 1024)
 	if err != nil {
 		return nil, fmt.Errorf("createQueryInput: %w", err)
 	}
@@ -218,8 +219,8 @@ func (t *Table[E, P, S]) Query(ctx context.Context, partition P, options ...func
 	return items, nil
 }
 
-func (t *Table[E, P, S]) QueryPage(ctx context.Context, partition P, startToken string, limit int, options ...func(input *dynamodb.QueryInput)) (items []E, nextToken string, err error) {
-	input, err := t.createQueryInput(partition, int32(limit))
+func (t *Table[E, P, S]) QueryPage(ctx context.Context, partition P, sortKey *S, startToken string, limit int, options ...func(input *dynamodb.QueryInput)) (items []E, nextToken string, err error) {
+	input, err := t.createQueryInput(partition, sortKey, int32(limit))
 	if err != nil {
 		return nil, nextToken, fmt.Errorf("createQueryInput: %w", err)
 	}
@@ -251,8 +252,8 @@ func (t *Table[E, P, S]) QueryPage(ctx context.Context, partition P, startToken 
 	return items, nextToken, nil
 }
 
-func (t *Table[E, P, S]) QueryFirstOne(ctx context.Context, partition P) (item E, err error) {
-	items, _, err := t.QueryPage(ctx, partition, "", 1)
+func (t *Table[E, P, S]) QueryFirstOne(ctx context.Context, partition P, sortKey *S) (item E, err error) {
+	items, _, err := t.QueryPage(ctx, partition, sortKey, "", 1)
 	if err != nil {
 		return item, err
 	}
@@ -262,8 +263,8 @@ func (t *Table[E, P, S]) QueryFirstOne(ctx context.Context, partition P) (item E
 	return items[0], nil
 }
 
-func (t *Table[E, P, S]) QueryLastOne(ctx context.Context, partition P) (item E, err error) {
-	items, _, err := t.QueryPage(ctx, partition, "", 1, func(input *dynamodb.QueryInput) {
+func (t *Table[E, P, S]) QueryLastOne(ctx context.Context, partition P, sortKey *S) (item E, err error) {
+	items, _, err := t.QueryPage(ctx, partition, sortKey, "", 1, func(input *dynamodb.QueryInput) {
 		input.ScanIndexForward = aws.Bool(false)
 	})
 	if err != nil {
@@ -275,8 +276,12 @@ func (t *Table[E, P, S]) QueryLastOne(ctx context.Context, partition P) (item E,
 	return items[0], nil
 }
 
-func (t *Table[E, P, S]) createQueryInput(partition P, limit int32) (*dynamodb.QueryInput, error) {
+func (t *Table[E, P, S]) createQueryInput(partition P, sortKey *S, limit int32) (*dynamodb.QueryInput, error) {
 	keyCond := expression.Key(t.pkDefinition.partitionKeyName).Equal(expression.Value(partition))
+	if t.pkDefinition.HasSortKey() && sortKey != nil {
+		sortKeyCond := expression.Key(t.pkDefinition.sortKeyName).Equal(expression.Value(*sortKey))
+		keyCond = keyCond.And(sortKeyCond)
+	}
 	cols := conv.MustSlice(t.columns, expression.Name)
 	proj := expression.NamesList(cols[0], cols[1:]...)
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCond).WithProjection(proj).Build()
