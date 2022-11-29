@@ -15,7 +15,20 @@
 3. Local secondary index 
    * Use the same partition key which means it can be stored at the same place with origin table item.  
    * It must be created along with the table
+   * <PartitionKey, SortKey> is not unique
+   * Determine fields when creating index
 4. Global secondary index 
    * Use different partition key as table. If it's the same, why not use local secondary.  
-   * If a table has a global secondary index, strong read consistency is not possible, as storage location of index is different with table item's.  
+   * If a table has a global secondary index, strong read consistency is not possible, as storage location of index is different with table item's.
+   * <PartitionKey, SortKey> is not unique
+   * Determine fields when creating index
+5. How to implement bidirectional unique constraint? 
+   1. Use two tables
+      Table1: <k1, k2>
+      Table2: <k2, k1> 
+      Use transaction to write items into two tables.  
+   2. One table with an additional row
+      Table: <k1, k2>
+      Insert an additional row with joined string "k1+k2" as partition key. 
+      This way is not clean
    
