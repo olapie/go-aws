@@ -37,6 +37,7 @@ func (r *Router) Handle(ctx context.Context, request *events.APIGatewayV2HTTPReq
 		for handler != nil {
 			resp, err := handler.Handler()(ctx, request)
 			if err != nil {
+				log.FromContext(ctx).Sugar().Error(err)
 				return apigateway.Error(err), nil
 			}
 			if resp != nil {
@@ -46,8 +47,8 @@ func (r *Router) Handle(ctx context.Context, request *events.APIGatewayV2HTTPReq
 		}
 	}
 	resp := new(events.APIGatewayV2HTTPResponse)
-	resp.StatusCode = http.StatusNotFound
-	resp.Body = http.StatusText(http.StatusNotFound)
+	resp.StatusCode = http.StatusNotImplemented
+	resp.Body = "Not implemented: " + httpInfo.Method + " " + request.RawPath
 	return resp, nil
 }
 
@@ -60,7 +61,8 @@ func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 			return apigateway.Error(errors.NotAcceptable("outdated request")), nil
 		}
 
-		message := request.RequestContext.HTTP.Method + request.RequestContext.HTTP.Path + apigateway.GetAccessToken(request) + ts
+		authorization := httpkit.GetHeader(request.Headers, httpkit.KeyAuthorization)
+		message := request.RequestContext.HTTP.Method + request.RequestContext.HTTP.Path + authorization + ts
 		hash := sha256.Sum256([]byte(message))
 
 		signature := httpkit.GetHeader(request.Headers, httpkit.KeySignature)
