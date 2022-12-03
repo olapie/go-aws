@@ -14,27 +14,41 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
+type TableOption[E any, P PartitionKeyConstraint, S SortKeyConstraint] func(t *Table[E, P, S])
+
+func WithConsistentRead[E any, P PartitionKeyConstraint, S SortKeyConstraint](b bool) TableOption[E, P, S] {
+	return func(t *Table[E, P, S]) {
+		t.consistentRead = aws.Bool(b)
+	}
+}
+
 // Table is a wrapper of dynamodb table providing helpful operations
 // E - type of item
 // P - type of partition key
 // S - type of sort key
 type Table[E any, P PartitionKeyConstraint, S SortKeyConstraint] struct {
-	client       *dynamodb.Client
-	tableName    string
-	indexName    *string
-	pkDefinition *PrimaryKeyDefinition[P, S]
-	columns      []string
+	client         *dynamodb.Client
+	tableName      string
+	indexName      *string
+	pkDefinition   *PrimaryKeyDefinition[P, S]
+	columns        []string
+	consistentRead *bool
 }
 
 func NewTable[E any, P PartitionKeyConstraint, S SortKeyConstraint](
 	db *dynamodb.Client,
 	tableName string,
 	pk *PrimaryKeyDefinition[P, S],
+	options ...TableOption[E, P, S],
 ) *Table[E, P, S] {
 	t := &Table[E, P, S]{
 		client:       db,
 		tableName:    tableName,
 		pkDefinition: pk,
+	}
+
+	for _, o := range options {
+		o(t)
 	}
 
 	var elem E
@@ -120,8 +134,9 @@ func (t *Table[E, P, S]) BatchGet(ctx context.Context, partitionKeys []P, sortKe
 
 func (t *Table[E, P, S]) Get(ctx context.Context, partitionKey P, sortKey S) (E, error) {
 	input := &dynamodb.GetItemInput{
-		Key:       t.pkDefinition.NewKey(partitionKey, sortKey).AttributeValue(),
-		TableName: aws.String(t.tableName),
+		Key:            t.pkDefinition.NewKey(partitionKey, sortKey).AttributeValue(),
+		TableName:      aws.String(t.tableName),
+		ConsistentRead: t.consistentRead,
 	}
 	var item E
 	output, err := t.client.GetItem(ctx, input)
@@ -297,6 +312,7 @@ func (t *Table[E, P, S]) createQueryInput(partition P, sortKey *S, limit int32) 
 		TableName:                 aws.String(t.tableName),
 		IndexName:                 t.indexName,
 		Limit:                     aws.Int32(limit),
+		ConsistentRead:            t.consistentRead,
 	}
 	return input, nil
 }
