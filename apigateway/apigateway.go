@@ -86,8 +86,8 @@ func BuildContext(ctx context.Context, request *events.APIGatewayV2HTTPRequest) 
 		ctx = ctxutil.WithApplicationID(ctx, appID)
 	}
 
-	deviceID := httpkit.GetHeader(request.Headers, httpkit.KeyDeviceID)
-	ctx = ctxutil.WithDeviceID(ctx, deviceID)
+	clientID := httpkit.GetHeader(request.Headers, httpkit.KeyClientID)
+	ctx = ctxutil.WithClientID(ctx, clientID)
 
 	logger := log.FromContext(ctx).With(log.String("request_id", requestID))
 	ctx = log.BuildContext(ctx, logger)

@@ -95,7 +95,7 @@ func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 		}
 
 		if ecdsa.VerifyASN1(pubKey, hash[:], sign) {
-			return nil
+			return Next(ctx, request)
 		}
 		return apigateway.Error(errors.NotAcceptable("invalid signature"))
 	}

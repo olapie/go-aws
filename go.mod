@@ -4,10 +4,10 @@ go 1.19
 
 require (
 	code.olapie.com/conv v1.2.4
-	code.olapie.com/errors v1.0.7
+	code.olapie.com/errors v1.0.8
 	code.olapie.com/log v1.0.2
-	code.olapie.com/ola/ctxutil v1.0.1
-	code.olapie.com/ola/httpkit v1.1.6
+	code.olapie.com/ola/ctxutil v1.0.2
+	code.olapie.com/ola/httpkit v1.1.7
 	code.olapie.com/router v1.0.2
 	github.com/aws/aws-lambda-go v1.35.0
 	github.com/aws/aws-sdk-go-v2 v1.17.2
