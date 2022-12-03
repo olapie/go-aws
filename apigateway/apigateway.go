@@ -9,17 +9,12 @@ import (
 )
 
 func Error(err error) *events.APIGatewayV2HTTPResponse {
-	resp := new(events.APIGatewayV2HTTPResponse)
-	resp.Headers = make(map[string]string)
-	resp.Headers[httpkit.KeyContentType] = httpkit.Plain
 	if err == nil {
-		resp.StatusCode = http.StatusOK
-		resp.Body = http.StatusText(http.StatusOK)
-		return resp
+		return OK()
 	}
 
 	if er, ok := err.(*errors.Error); ok {
-		return JSON(er)
+		return JSON(er.Code, er)
 	}
 
 	var er errors.Error
@@ -28,7 +23,7 @@ func Error(err error) *events.APIGatewayV2HTTPResponse {
 		er.Code = http.StatusInternalServerError
 	}
 	er.Message = err.Error()
-	return JSON(er)
+	return JSON(er.Code, er)
 }
 
 func OK() *events.APIGatewayV2HTTPResponse {
@@ -40,9 +35,27 @@ func OK() *events.APIGatewayV2HTTPResponse {
 	return resp
 }
 
-func JSON(v any) *events.APIGatewayV2HTTPResponse {
+func NoContent() *events.APIGatewayV2HTTPResponse {
 	resp := new(events.APIGatewayV2HTTPResponse)
-	resp.StatusCode = http.StatusOK
+	resp.StatusCode = http.StatusNoContent
+	return resp
+}
+
+func JSON200(v any) *events.APIGatewayV2HTTPResponse {
+	return JSON(200, v)
+}
+
+func JSON201(v any) *events.APIGatewayV2HTTPResponse {
+	return JSON(201, v)
+}
+
+func JSON202(v any) *events.APIGatewayV2HTTPResponse {
+	return JSON(202, v)
+}
+
+func JSON(status int, v any) *events.APIGatewayV2HTTPResponse {
+	resp := new(events.APIGatewayV2HTTPResponse)
+	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
 	resp.Headers[httpkit.KeyContentType] = httpkit.JSON
 	resp.Body = conv.MustJSONString(v)
