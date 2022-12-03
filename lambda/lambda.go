@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -17,7 +18,10 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 )
 
-type Func func(ctx context.Context, request *events.APIGatewayV2HTTPRequest) (*events.APIGatewayV2HTTPResponse, error)
+type Request = events.APIGatewayV2HTTPRequest
+type Response = events.APIGatewayV2HTTPResponse
+
+type Func = router.HandlerFunc[*Request, *Response]
 
 type Router struct {
 	*router.Router[Func]
@@ -29,36 +33,55 @@ func NewRouter() *Router {
 	}
 }
 
-func (r *Router) Handle(ctx context.Context, request *events.APIGatewayV2HTTPRequest) (*events.APIGatewayV2HTTPResponse, error) {
+func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) {
+	ctx = apigateway.BuildContext(ctx, request)
 	httpInfo := request.RequestContext.HTTP
+	logger := log.FromContext(ctx)
+	logger.Debug("handle request",
+		log.String("header", conv.MustJSONString(request.Headers)),
+		log.String("path", request.RawPath),
+		log.String("query", request.RawQueryString),
+		log.String("method", httpInfo.Method),
+		log.String("user_agent", httpInfo.UserAgent),
+		log.String("source_ip", httpInfo.SourceIP),
+		log.String("http_path", httpInfo.Path),
+	)
+
+	defer func() {
+		if msg := recover(); msg != nil {
+			logger.Error("caught a panic", log.Any("error", msg))
+			resp = apigateway.Error(errors.New(fmt.Sprint(msg)))
+			return
+		}
+
+		if resp.StatusCode < 400 {
+			log.FromContext(ctx).Info("Finished", log.Int("status_code", resp.StatusCode))
+		} else {
+			log.FromContext(ctx).Error("Failed", log.Int("status_code", resp.StatusCode),
+				log.String("body", resp.Body))
+		}
+	}()
+
 	endpoint, _ := r.Match(httpInfo.Method, request.RawPath)
 	if endpoint != nil {
 		handler := endpoint.Handler()
-		for handler != nil {
-			resp, err := handler.Handler()(ctx, request)
-			if err != nil {
-				log.FromContext(ctx).Sugar().Error(err)
-				return apigateway.Error(err), nil
-			}
-			if resp != nil {
-				return resp, nil
-			}
-			handler = handler.Next()
-		}
+		ctx = router.WithNextHandler(ctx, handler.Next())
+		resp = handler.Handler()(ctx, request)
+		return resp
 	}
-	resp := new(events.APIGatewayV2HTTPResponse)
+	resp = new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = http.StatusNotImplemented
 	resp.Body = "Not implemented: " + httpInfo.Method + " " + request.RawPath
-	return resp, nil
+	return resp
 }
 
 func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
-	return func(ctx context.Context, request *events.APIGatewayV2HTTPRequest) (*events.APIGatewayV2HTTPResponse, error) {
+	return func(ctx context.Context, request *Request) *Response {
 		ts := httpkit.GetHeader(request.Headers, httpkit.KeyTimestamp)
 		t, _ := conv.ToInt64(ts)
 		now := time.Now().Unix()
 		if conv.Abs(now-t) > 5 {
-			return apigateway.Error(errors.NotAcceptable("outdated request")), nil
+			return apigateway.Error(errors.NotAcceptable("outdated request"))
 		}
 
 		authorization := httpkit.GetHeader(request.Headers, httpkit.KeyAuthorization)
@@ -69,12 +92,16 @@ func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 		sign, err := base64.StdEncoding.DecodeString(signature)
 		if err != nil {
 			log.S().Errorf("base64.DecodeString: signature=%s, %v", signature, err)
-			return apigateway.Error(errors.NotAcceptable("malformed signature")), nil
+			return apigateway.Error(errors.NotAcceptable("malformed signature"))
 		}
 
 		if ecdsa.VerifyASN1(pubKey, hash[:], sign) {
-			return nil, nil
+			return nil
 		}
-		return apigateway.Error(errors.NotAcceptable("invalid signature")), nil
+		return apigateway.Error(errors.NotAcceptable("invalid signature"))
 	}
+}
+
+func Next(ctx context.Context, request *Request) *Response {
+	return router.Next[*Request, *Response](ctx, request)
 }

@@ -12,7 +12,9 @@ import (
 	"net/http"
 )
 
-func Error(err error) *events.APIGatewayV2HTTPResponse {
+type Response = events.APIGatewayV2HTTPResponse
+
+func Error(err error) *Response {
 	if err == nil {
 		return OK()
 	}
@@ -30,7 +32,7 @@ func Error(err error) *events.APIGatewayV2HTTPResponse {
 	return JSON(er.Code, er)
 }
 
-func OK() *events.APIGatewayV2HTTPResponse {
+func OK() *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.Headers = make(map[string]string)
 	resp.Headers[httpkit.KeyContentType] = httpkit.Plain
@@ -39,25 +41,32 @@ func OK() *events.APIGatewayV2HTTPResponse {
 	return resp
 }
 
-func NoContent() *events.APIGatewayV2HTTPResponse {
+func NoContent() *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = http.StatusNoContent
 	return resp
 }
 
-func JSON200(v any) *events.APIGatewayV2HTTPResponse {
+func JSON200(v any) *Response {
 	return JSON(200, v)
 }
 
-func JSON201(v any) *events.APIGatewayV2HTTPResponse {
+func JSON200OrError(v any, err error) *Response {
+	if err != nil {
+		return Error(err)
+	}
+	return JSON(200, v)
+}
+
+func JSON201(v any) *Response {
 	return JSON(201, v)
 }
 
-func JSON202(v any) *events.APIGatewayV2HTTPResponse {
+func JSON202(v any) *Response {
 	return JSON(202, v)
 }
 
-func JSON(status int, v any) *events.APIGatewayV2HTTPResponse {
+func JSON(status int, v any) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)

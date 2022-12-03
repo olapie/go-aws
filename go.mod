@@ -8,7 +8,7 @@ require (
 	code.olapie.com/log v1.0.2
 	code.olapie.com/ola/ctxutil v1.0.1
 	code.olapie.com/ola/httpkit v1.1.6
-	code.olapie.com/router v1.0.0
+	code.olapie.com/router v1.0.2
 	github.com/aws/aws-lambda-go v1.35.0
 	github.com/aws/aws-sdk-go-v2 v1.17.2
 	github.com/aws/aws-sdk-go-v2/config v1.18.2
