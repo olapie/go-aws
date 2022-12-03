@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"net/http"
 	"time"
 
 	"code.olapie.com/awskit/apigateway"
@@ -67,12 +66,12 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		handler := endpoint.Handler()
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		resp = handler.Handler()(ctx, request)
+		if resp == nil {
+			resp = apigateway.Error(errors.NotImplemented("no response from handler"))
+		}
 		return resp
 	}
-	resp = new(events.APIGatewayV2HTTPResponse)
-	resp.StatusCode = http.StatusNotImplemented
-	resp.Body = "Not implemented: " + httpInfo.Method + " " + request.RawPath
-	return resp
+	return apigateway.Error(errors.NotFound("endpoint not found"))
 }
 
 func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
