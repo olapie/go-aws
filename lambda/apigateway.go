@@ -1,4 +1,4 @@
-package apigateway
+package lambda
 
 import (
 	"code.olapie.com/conv"
@@ -11,8 +11,6 @@ import (
 	"github.com/google/uuid"
 	"net/http"
 )
-
-type Response = events.APIGatewayV2HTTPResponse
 
 func Error(err error) *Response {
 	if err == nil {
@@ -77,16 +75,25 @@ func JSON(status int, v any) *Response {
 
 func BuildContext(ctx context.Context, request *events.APIGatewayV2HTTPRequest) context.Context {
 	appID := httpkit.GetHeader(request.Headers, httpkit.KeyApplicationID)
+	if appID == "" {
+		appID = request.QueryStringParameters["application_id"]
+	}
 	if appID != "" {
 		ctx = ctxutil.WithApplicationID(ctx, appID)
 	}
 
 	clientID := httpkit.GetHeader(request.Headers, httpkit.KeyClientID)
+	if clientID == "" {
+		clientID = request.QueryStringParameters["client_id"]
+	}
 	ctx = ctxutil.WithClientID(ctx, clientID)
 
 	traceID := httpkit.GetHeader(request.Headers, httpkit.KeyTraceID)
 	if traceID == "" {
-		traceID = uuid.NewString()
+		traceID = request.QueryStringParameters["trace_id"]
+		if traceID == "" {
+			traceID = uuid.NewString()
+		}
 	}
 	ctx = ctxutil.WithTraceID(ctx, traceID)
 

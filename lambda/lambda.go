@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"code.olapie.com/awskit/apigateway"
 	"code.olapie.com/conv"
 	"code.olapie.com/errors"
 	"code.olapie.com/log"
@@ -33,7 +32,7 @@ func NewRouter() *Router {
 }
 
 func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) {
-	ctx = apigateway.BuildContext(ctx, request)
+	ctx = BuildContext(ctx, request)
 	httpInfo := request.RequestContext.HTTP
 	logger := log.FromContext(ctx)
 	logger.Debug("Received request",
@@ -49,7 +48,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 	defer func() {
 		if msg := recover(); msg != nil {
 			logger.Error("caught a panic", log.Any("error", msg))
-			resp = apigateway.Error(errors.New(fmt.Sprint(msg)))
+			resp = Error(errors.New(fmt.Sprint(msg)))
 			return
 		}
 
@@ -67,11 +66,11 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		resp = handler.Handler()(ctx, request)
 		if resp == nil {
-			resp = apigateway.Error(errors.NotImplemented("no response from handler"))
+			resp = Error(errors.NotImplemented("no response from handler"))
 		}
 		return resp
 	}
-	return apigateway.Error(errors.NotFound("endpoint not found"))
+	return Error(errors.NotFound("endpoint not found"))
 }
 
 func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
@@ -80,7 +79,7 @@ func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 		t, _ := conv.ToInt64(ts)
 		now := time.Now().Unix()
 		if conv.Abs(now-t) > 5 {
-			return apigateway.Error(errors.NotAcceptable("outdated request"))
+			return Error(errors.NotAcceptable("outdated request"))
 		}
 
 		authorization := httpkit.GetHeader(request.Headers, httpkit.KeyAuthorization)
@@ -91,13 +90,13 @@ func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 		sign, err := base64.StdEncoding.DecodeString(signature)
 		if err != nil {
 			log.S().Errorf("base64.DecodeString: signature=%s, %v", signature, err)
-			return apigateway.Error(errors.NotAcceptable("malformed signature"))
+			return Error(errors.NotAcceptable("malformed signature"))
 		}
 
 		if ecdsa.VerifyASN1(pubKey, hash[:], sign) {
 			return Next(ctx, request)
 		}
-		return apigateway.Error(errors.NotAcceptable("invalid signature"))
+		return Error(errors.NotAcceptable("invalid signature"))
 	}
 }
 
