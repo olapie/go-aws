@@ -36,7 +36,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 	ctx = apigateway.BuildContext(ctx, request)
 	httpInfo := request.RequestContext.HTTP
 	logger := log.FromContext(ctx)
-	logger.Debug("handle request",
+	logger.Debug("Received request",
 		log.String("header", conv.MustJSONString(request.Headers)),
 		log.String("path", request.RawPath),
 		log.String("query", request.RawQueryString),

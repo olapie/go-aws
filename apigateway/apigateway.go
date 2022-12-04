@@ -76,11 +76,6 @@ func JSON(status int, v any) *Response {
 }
 
 func BuildContext(ctx context.Context, request *events.APIGatewayV2HTTPRequest) context.Context {
-	traceID := httpkit.GetHeader(request.Headers, httpkit.KeyTraceID)
-	if traceID == "" {
-		traceID = uuid.NewString()
-	}
-
 	appID := httpkit.GetHeader(request.Headers, httpkit.KeyApplicationID)
 	if appID != "" {
 		ctx = ctxutil.WithApplicationID(ctx, appID)
@@ -88,6 +83,12 @@ func BuildContext(ctx context.Context, request *events.APIGatewayV2HTTPRequest) 
 
 	clientID := httpkit.GetHeader(request.Headers, httpkit.KeyClientID)
 	ctx = ctxutil.WithClientID(ctx, clientID)
+
+	traceID := httpkit.GetHeader(request.Headers, httpkit.KeyTraceID)
+	if traceID == "" {
+		traceID = uuid.NewString()
+	}
+	ctx = ctxutil.WithTraceID(ctx, traceID)
 
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
 	ctx = log.BuildContext(ctx, logger)
