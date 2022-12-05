@@ -59,6 +59,9 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 			log.FromContext(ctx).Error("failed", log.Int("status_code", resp.StatusCode),
 				log.String("body", resp.Body))
 		}
+		if resp.Headers == nil {
+			resp.Headers = make(map[string]string)
+		}
 		httpkit.SetTraceID(resp.Headers, traceID)
 	}()
 
