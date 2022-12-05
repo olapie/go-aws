@@ -53,9 +53,9 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		}
 
 		if resp.StatusCode < 400 {
-			log.FromContext(ctx).Info("Finished", log.Int("status_code", resp.StatusCode))
+			log.FromContext(ctx).Info("finished", log.Int("status_code", resp.StatusCode))
 		} else {
-			log.FromContext(ctx).Error("Failed", log.Int("status_code", resp.StatusCode),
+			log.FromContext(ctx).Error("failed", log.Int("status_code", resp.StatusCode),
 				log.String("body", resp.Body))
 		}
 	}()
