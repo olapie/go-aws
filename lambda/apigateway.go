@@ -31,11 +31,15 @@ func Error(err error) *Response {
 }
 
 func OK() *Response {
+	return Status(http.StatusOK)
+}
+
+func Status(s int) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.Headers = make(map[string]string)
 	resp.Headers[httpkit.KeyContentType] = httpkit.Plain
-	resp.StatusCode = http.StatusOK
-	resp.Body = http.StatusText(http.StatusOK)
+	resp.StatusCode = s
+	resp.Body = http.StatusText(s)
 	return resp
 }
 
