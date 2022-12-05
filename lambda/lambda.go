@@ -1,6 +1,7 @@
 package lambda
 
 import (
+	"code.olapie.com/ola/ctxutil"
 	"context"
 	"crypto/ecdsa"
 	"crypto/sha256"
@@ -44,6 +45,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		log.String("source_ip", httpInfo.SourceIP),
 		log.String("http_path", httpInfo.Path),
 	)
+	traceID := ctxutil.GetTraceID(ctx)
 
 	defer func() {
 		if msg := recover(); msg != nil {
@@ -58,6 +60,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 			log.FromContext(ctx).Error("failed", log.Int("status_code", resp.StatusCode),
 				log.String("body", resp.Body))
 		}
+		httpkit.SetTraceID(resp.Headers, traceID)
 	}()
 
 	endpoint, _ := r.Match(httpInfo.Method, request.RawPath)

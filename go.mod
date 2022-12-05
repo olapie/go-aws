@@ -4,10 +4,10 @@ go 1.19
 
 require (
 	code.olapie.com/conv v1.2.4
-	code.olapie.com/errors v1.0.8
+	code.olapie.com/errors v1.0.9
 	code.olapie.com/log v1.0.2
 	code.olapie.com/ola/ctxutil v1.0.2
-	code.olapie.com/ola/httpkit v1.1.7
+	code.olapie.com/ola/httpkit v1.2.1
 	code.olapie.com/router v1.0.2
 	github.com/aws/aws-lambda-go v1.35.0
 	github.com/aws/aws-sdk-go-v2 v1.17.2
@@ -20,11 +20,11 @@ require (
 	github.com/aws/smithy-go v1.13.5
 	github.com/google/uuid v1.3.0
 	github.com/stretchr/testify v1.8.0
-	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9
+	golang.org/x/exp v0.0.0-20221204150635-6dcec336b2bb
 )
 
 require (
-	code.olapie.com/types v1.0.2 // indirect
+	code.olapie.com/types v1.0.3 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.10 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.2 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.19 // indirect
@@ -53,7 +53,7 @@ require (
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/net v0.2.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/text v0.5.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
