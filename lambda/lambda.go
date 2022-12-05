@@ -36,14 +36,13 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 	ctx = BuildContext(ctx, request)
 	httpInfo := request.RequestContext.HTTP
 	logger := log.FromContext(ctx)
-	logger.Debug("Received request",
+	logger.Info("received",
 		log.String("header", conv.MustJSONString(request.Headers)),
 		log.String("path", request.RawPath),
 		log.String("query", request.RawQueryString),
 		log.String("method", httpInfo.Method),
 		log.String("user_agent", httpInfo.UserAgent),
 		log.String("source_ip", httpInfo.SourceIP),
-		log.String("http_path", httpInfo.Path),
 	)
 	traceID := ctxutil.GetTraceID(ctx)
 
@@ -55,7 +54,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		}
 
 		if resp.StatusCode < 400 {
-			log.FromContext(ctx).Info("finished", log.Int("status_code", resp.StatusCode))
+			log.FromContext(ctx).Info("succeeded", log.Int("status_code", resp.StatusCode))
 		} else {
 			log.FromContext(ctx).Error("failed", log.Int("status_code", resp.StatusCode),
 				log.String("body", resp.Body))
