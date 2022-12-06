@@ -5,11 +5,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"time"
 
-	"code.olapie.com/conv"
-	"code.olapie.com/errors"
-	"code.olapie.com/ola/httpkit"
+	"code.olapie.com/sugar/errorx"
+	"code.olapie.com/sugar/mapping"
+	"code.olapie.com/sugar/slicing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -55,7 +56,7 @@ func (s *S3Bucket) Put(ctx context.Context, id string, content []byte, metadata 
 		Body:         bytes.NewBuffer(content),
 		ACL:          s.ACL,
 		CacheControl: aws.String(s.CacheControl),
-		ContentType:  aws.String(httpkit.DetectMIMEType(content)),
+		ContentType:  aws.String(http.DetectContentType(content)),
 		Metadata:     metadata,
 	}
 	_, err := s.client.PutObject(ctx, input)
@@ -70,8 +71,8 @@ func (s *S3Bucket) Get(ctx context.Context, id string) ([]byte, error) {
 
 	output, err := s.client.GetObject(ctx, input)
 	if err != nil {
-		if _, ok := errors.CauseOf[*types.NoSuchKey](err); ok {
-			return nil, errors.NotFound("object %s doesn't exist", id)
+		if _, ok := errorx.CauseOf[*types.NoSuchKey](err); ok {
+			return nil, errorx.NotFound("object %s doesn't exist", id)
 		}
 		return nil, fmt.Errorf("s3.GetObject: %w", err)
 	}
@@ -91,7 +92,7 @@ func (s *S3Bucket) Exists(ctx context.Context, id string) (bool, error) {
 		return true, nil
 	}
 
-	if apiErr, ok := errors.CauseOf[smithy.APIError](err); ok {
+	if apiErr, ok := errorx.CauseOf[smithy.APIError](err); ok {
 		if apiErr.ErrorCode() == s3ErrorNotFound.ErrorCode() {
 			return false, nil
 		}
@@ -127,7 +128,7 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string) error {
 	input := &s3.DeleteObjectsInput{
 		Bucket: aws.String(s.bucket),
 		Delete: &types.Delete{
-			Objects: conv.MustSlice(ids, func(id string) types.ObjectIdentifier {
+			Objects: slicing.MustTransform(ids, func(id string) types.ObjectIdentifier {
 				return types.ObjectIdentifier{
 					Key: aws.String(id),
 				}
@@ -145,12 +146,12 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string) error {
 	}
 
 	if len(output.Deleted) != len(ids) {
-		idSet := conv.MustSliceToSet[string, string](ids, nil)
+		idSet := slicing.MustToSet[string, string](ids, nil)
 		for _, del := range output.Deleted {
 			delete(idSet, *del.Key)
 		}
 		if len(idSet) != 0 {
-			return fmt.Errorf("some ids cannot be deleted: %v", conv.GetMapKeys(idSet))
+			return fmt.Errorf("some ids cannot be deleted: %v", mapping.GetKeys(idSet))
 		}
 	}
 

@@ -1,15 +1,16 @@
 package lambda
 
 import (
-	"code.olapie.com/conv"
-	"code.olapie.com/errors"
-	"code.olapie.com/log"
-	"code.olapie.com/ola/ctxutil"
-	"code.olapie.com/ola/httpkit"
 	"context"
+	"net/http"
+
+	"code.olapie.com/log"
+	"code.olapie.com/sugar/contexts"
+	"code.olapie.com/sugar/errorx"
+	"code.olapie.com/sugar/httpx"
+	"code.olapie.com/sugar/jsonx"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
-	"net/http"
 )
 
 func Error(err error) *Response {
@@ -17,12 +18,12 @@ func Error(err error) *Response {
 		return OK()
 	}
 
-	if er, ok := err.(*errors.Error); ok {
+	if er, ok := err.(*errorx.Error); ok {
 		return JSON(er.Code, er)
 	}
 
-	var er errors.Error
-	er.Code = errors.GetCode(err)
+	var er errorx.Error
+	er.Code = errorx.GetCode(err)
 	if er.Code == 0 {
 		er.Code = http.StatusInternalServerError
 	}
@@ -37,7 +38,7 @@ func OK() *Response {
 func Status(s int) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpkit.KeyContentType] = httpkit.Plain
+	resp.Headers[httpx.KeyContentType] = httpx.Plain
 	resp.StatusCode = s
 	resp.Body = http.StatusText(s)
 	return resp
@@ -72,34 +73,34 @@ func JSON(status int, v any) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpkit.KeyContentType] = httpkit.JSON
-	resp.Body = conv.MustJSONString(v)
+	resp.Headers[httpx.KeyContentType] = httpx.JSON
+	resp.Body = jsonx.ToString(v)
 	return resp
 }
 
 func BuildContext(ctx context.Context, request *events.APIGatewayV2HTTPRequest) context.Context {
-	appID := httpkit.GetHeader(request.Headers, httpkit.KeyApplicationID)
+	appID := httpx.GetHeader(request.Headers, httpx.KeyApplicationID)
 	if appID == "" {
 		appID = request.QueryStringParameters["application_id"]
 	}
 	if appID != "" {
-		ctx = ctxutil.WithApplicationID(ctx, appID)
+		ctx = contexts.WithApplicationID(ctx, appID)
 	}
 
-	clientID := httpkit.GetHeader(request.Headers, httpkit.KeyClientID)
+	clientID := httpx.GetHeader(request.Headers, httpx.KeyClientID)
 	if clientID == "" {
 		clientID = request.QueryStringParameters["client_id"]
 	}
-	ctx = ctxutil.WithClientID(ctx, clientID)
+	ctx = contexts.WithClientID(ctx, clientID)
 
-	traceID := httpkit.GetHeader(request.Headers, httpkit.KeyTraceID)
+	traceID := httpx.GetHeader(request.Headers, httpx.KeyTraceID)
 	if traceID == "" {
 		traceID = request.QueryStringParameters["trace_id"]
 		if traceID == "" {
 			traceID = uuid.NewString()
 		}
 	}
-	ctx = ctxutil.WithTraceID(ctx, traceID)
+	ctx = contexts.WithTraceID(ctx, traceID)
 
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
 	ctx = log.BuildContext(ctx, logger)

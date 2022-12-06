@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"strings"
 
-	"code.olapie.com/conv"
-	"code.olapie.com/errors"
+	"code.olapie.com/sugar/errorx"
+	"code.olapie.com/sugar/jsonx"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"golang.org/x/exp/constraints"
@@ -119,12 +119,12 @@ func (d *PrimaryKeyDefinition[P, S]) DecodeStringToValue(s string) (map[string]t
 	for name, val := range nameToValue {
 		typ, ok := d.Prototype()[name]
 		if !ok {
-			return nil, errors.BadRequest("invalid token")
+			return nil, errorx.BadRequest("invalid token")
 		}
 		attr := reflect.New(typ)
-		err = json.Unmarshal(conv.MustJSONBytes(val), attr.Interface())
+		err = json.Unmarshal(jsonx.ToBytes(val), attr.Interface())
 		if err != nil {
-			return nil, errors.BadRequest("invalid token")
+			return nil, errorx.BadRequest("invalid token")
 		}
 		key[name] = attr.Elem().Interface().(types.AttributeValue)
 	}
@@ -133,7 +133,7 @@ func (d *PrimaryKeyDefinition[P, S]) DecodeStringToValue(s string) (map[string]t
 }
 
 func (d *PrimaryKeyDefinition[P, S]) EncodeValueToString(v map[string]types.AttributeValue) string {
-	return base64.StdEncoding.EncodeToString(conv.MustJSONBytes(v))
+	return base64.StdEncoding.EncodeToString(jsonx.ToBytes(v))
 }
 
 type PrimaryKey[P PartitionKeyConstraint, S SortKeyConstraint] struct {

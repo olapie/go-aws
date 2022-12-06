@@ -2,9 +2,9 @@ package awskit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	"code.olapie.com/errors"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/aws/aws-sdk-go-v2/service/ses/types"
