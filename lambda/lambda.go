@@ -1,6 +1,7 @@
 package lambda
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/sha256"
@@ -22,7 +23,6 @@ import (
 
 type Request = events.APIGatewayV2HTTPRequest
 type Response = events.APIGatewayV2HTTPResponse
-
 type Func = router.HandlerFunc[*Request, *Response]
 
 type Router struct {
@@ -56,12 +56,17 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 			return
 		}
 
+		logger := log.FromContext(ctx).With(log.Int("status_code", resp.StatusCode))
 		if resp.StatusCode < 400 {
-			log.FromContext(ctx).Info("succeeded", log.Int("status_code", resp.StatusCode))
+			logger.Info("succeeded")
 		} else {
-			log.FromContext(ctx).Error("failed", log.Int("status_code", resp.StatusCode),
-				log.String("body", resp.Body))
+			if len(resp.Body) < 1024 {
+				logger.Error("failed", log.String("body", resp.Body))
+			} else {
+				logger.Error("failed")
+			}
 		}
+
 		if resp.Headers == nil {
 			resp.Headers = make(map[string]string)
 		}
@@ -90,14 +95,12 @@ func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 			return Error(errorx.NotAcceptable("outdated request"))
 		}
 
-		authorization := httpx.GetHeader(request.Headers, httpx.KeyAuthorization)
-		message := request.RequestContext.HTTP.Method + request.RequestContext.HTTP.Path + authorization + ts
-		hash := sha256.Sum256([]byte(message))
+		hash := getMessageHashForSigning(request)
 
 		signature := httpx.GetHeader(request.Headers, httpx.KeySignature)
 		sign, err := base64.StdEncoding.DecodeString(signature)
 		if err != nil {
-			log.S().Errorf("base64.DecodeString: signature=%s, %v", signature, err)
+			log.G().Error("cannot decode signature", log.Error(err))
 			return Error(errorx.NotAcceptable("malformed signature"))
 		}
 
@@ -106,6 +109,21 @@ func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 		}
 		return Error(errorx.NotAcceptable("invalid signature"))
 	}
+}
+
+func getMessageHashForSigning(req *Request) []byte {
+	httpInfo := req.RequestContext.HTTP
+	var buf bytes.Buffer
+	buf.WriteString(httpInfo.Method)
+	buf.WriteString(httpInfo.Path)
+	buf.WriteString(req.RawQueryString)
+	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyContentType))
+	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyAppID))
+	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyClientID))
+	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyTimestamp))
+	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyAuthorization))
+	hash := sha256.Sum256(buf.Bytes())
+	return hash[:]
 }
 
 func Next(ctx context.Context, request *Request) *Response {

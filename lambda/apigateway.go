@@ -79,31 +79,16 @@ func JSON(status int, v any) *Response {
 }
 
 func BuildContext(ctx context.Context, request *events.APIGatewayV2HTTPRequest) context.Context {
-	appID := httpx.GetHeader(request.Headers, httpx.KeyApplicationID)
-	if appID == "" {
-		appID = request.QueryStringParameters["application_id"]
-	}
-	if appID != "" {
-		ctx = contexts.WithApplicationID(ctx, appID)
-	}
-
+	appID := httpx.GetHeader(request.Headers, httpx.KeyAppID)
 	clientID := httpx.GetHeader(request.Headers, httpx.KeyClientID)
-	if clientID == "" {
-		clientID = request.QueryStringParameters["client_id"]
-	}
-	ctx = contexts.WithClientID(ctx, clientID)
-
 	traceID := httpx.GetHeader(request.Headers, httpx.KeyTraceID)
 	if traceID == "" {
-		traceID = request.QueryStringParameters["trace_id"]
-		if traceID == "" {
-			traceID = uuid.NewString()
-		}
+		traceID = uuid.NewString()
 	}
+	ctx = contexts.WithAppID(ctx, appID)
+	ctx = contexts.WithClientID(ctx, clientID)
 	ctx = contexts.WithTraceID(ctx, traceID)
-
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
 	ctx = log.BuildContext(ctx, logger)
-
 	return ctx
 }
