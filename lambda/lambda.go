@@ -92,7 +92,7 @@ func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 		t, _ := conv.ToInt64(ts)
 		now := time.Now().Unix()
 		if mathx.Abs(now-t) > 5 {
-			return Error(errorx.NotAcceptable("outdated request"))
+			return Error(errorx.NotAcceptable("outdated request: %s", ts))
 		}
 
 		hash := getMessageHashForSigning(request)
@@ -101,7 +101,7 @@ func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 		sign, err := base64.StdEncoding.DecodeString(signature)
 		if err != nil {
 			log.G().Error("cannot decode signature", log.Error(err))
-			return Error(errorx.NotAcceptable("malformed signature"))
+			return Error(errorx.NotAcceptable("malformed signature: %s, %v", signature, err))
 		}
 
 		if ecdsa.VerifyASN1(pubKey, hash[:], sign) {
