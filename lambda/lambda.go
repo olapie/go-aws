@@ -2,22 +2,17 @@ package lambda
 
 import (
 	"bytes"
-	"context"
-	"crypto/ecdsa"
-	"crypto/sha256"
-	"encoding/base64"
-	"errors"
-	"fmt"
-	"time"
-
 	"code.olapie.com/log"
 	"code.olapie.com/router"
 	"code.olapie.com/sugar/contexts"
-	"code.olapie.com/sugar/conv"
 	"code.olapie.com/sugar/errorx"
 	"code.olapie.com/sugar/httpx"
 	"code.olapie.com/sugar/jsonx"
-	"code.olapie.com/sugar/mathx"
+	"context"
+	"crypto/ecdsa"
+	"crypto/sha256"
+	"errors"
+	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 )
 
@@ -88,22 +83,15 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 
 func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 	return func(ctx context.Context, request *Request) *Response {
-		ts := httpx.GetHeader(request.Headers, httpx.KeyTimestamp)
-		t, _ := conv.ToInt64(ts)
-		now := time.Now().Unix()
-		if mathx.Abs(now-t) > 5 {
-			return Error(errorx.NotAcceptable("outdated request: %s", ts))
+		if err := httpx.CheckTimestamp(request.Headers); err != nil {
+			return Error(err)
+		}
+		sign, err := httpx.DecodeSign(request.Headers)
+		if err != nil {
+			return Error(err)
 		}
 
 		hash := getMessageHashForSigning(request)
-
-		signature := httpx.GetHeader(request.Headers, httpx.KeySignature)
-		sign, err := base64.StdEncoding.DecodeString(signature)
-		if err != nil {
-			log.G().Error("cannot decode signature", log.Error(err))
-			return Error(errorx.NotAcceptable("malformed signature: %s, %v", signature, err))
-		}
-
 		if ecdsa.VerifyASN1(pubKey, hash[:], sign) {
 			return Next(ctx, request)
 		}
