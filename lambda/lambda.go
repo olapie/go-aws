@@ -43,7 +43,6 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		log.String("user_agent", httpInfo.UserAgent),
 		log.String("source_ip", httpInfo.SourceIP),
 	)
-	traceID := contexts.GetTraceID(ctx)
 
 	defer func() {
 		if msg := recover(); msg != nil {
@@ -66,7 +65,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		if resp.Headers == nil {
 			resp.Headers = make(map[string]string)
 		}
-		httpx.SetTraceID(resp.Headers, traceID)
+		httpx.SetTraceID(resp.Headers, contexts.GetTraceID(ctx))
 	}()
 
 	endpoint, _ := r.Match(httpInfo.Method, request.RawPath)
@@ -91,8 +90,7 @@ func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 		if err != nil {
 			return Error(err)
 		}
-
-		hash := getMessageHashForSigning(request)
+		hash := getMessageHashForSigning(ctx, request)
 		if ecdsa.VerifyASN1(pubKey, hash[:], sign) {
 			return Next(ctx, request)
 		}
@@ -100,7 +98,7 @@ func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 	}
 }
 
-func getMessageHashForSigning(req *Request) []byte {
+func getMessageHashForSigning(ctx context.Context, req *Request) []byte {
 	httpInfo := req.RequestContext.HTTP
 	var buf bytes.Buffer
 	buf.WriteString(httpInfo.Method)
