@@ -104,11 +104,8 @@ func getMessageHashForSigning(ctx context.Context, req *Request) []byte {
 	buf.WriteString(httpInfo.Method)
 	buf.WriteString(httpInfo.Path)
 	buf.WriteString(req.RawQueryString)
-	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyContentType))
-	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyAppID))
-	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyClientID))
+	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyTraceID))
 	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyTimestamp))
-	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyAuthorization))
 	hash := md5.Sum(buf.Bytes())
 	return hash[:]
 }
