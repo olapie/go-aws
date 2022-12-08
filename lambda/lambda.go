@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
-	"crypto/sha256"
+	"crypto/md5"
 	"errors"
 	"fmt"
 
@@ -109,7 +109,7 @@ func getMessageHashForSigning(ctx context.Context, req *Request) []byte {
 	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyClientID))
 	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyTimestamp))
 	buf.WriteString(httpx.GetHeader(req.Headers, httpx.KeyAuthorization))
-	hash := sha256.Sum256(buf.Bytes())
+	hash := md5.Sum(buf.Bytes())
 	return hash[:]
 }
 
