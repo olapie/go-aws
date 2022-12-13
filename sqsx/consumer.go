@@ -38,28 +38,28 @@ type RawConsumerOptions struct {
 	MaxNumberOfMessages int32
 }
 
-type RawMessageHandler interface {
-	HandleRawMessage(ctx context.Context, message string) error
+type MessageHandler interface {
+	HandleMessage(ctx context.Context, message string) error
 }
 
-type RawMessageHandlerFunc func(ctx context.Context, message string) error
+type MessageHandlerFunc func(ctx context.Context, message string) error
 
-func (h RawMessageHandlerFunc) HandleRawMessage(ctx context.Context, message string) error {
+func (h MessageHandlerFunc) HandleMessage(ctx context.Context, message string) error {
 	return h(ctx, message)
 }
 
-type RawMessageConsumer struct {
+type MessageConsumer struct {
 	queueName string
 	queueURL  *string
 
 	api     ReceiveMessageAPI
-	handler RawMessageHandler
+	handler MessageHandler
 
 	options *RawConsumerOptions
 }
 
-func NewRawMessageConsumer(queueName string, api ReceiveMessageAPI, handler RawMessageHandler, optFns ...func(options *RawConsumerOptions)) *RawMessageConsumer {
-	c := &RawMessageConsumer{
+func NewMessageConsumer(queueName string, api ReceiveMessageAPI, handler MessageHandler, optFns ...func(options *RawConsumerOptions)) *MessageConsumer {
+	c := &MessageConsumer{
 		api:       api,
 		handler:   handler,
 		queueName: queueName,
@@ -89,7 +89,7 @@ func NewRawMessageConsumer(queueName string, api ReceiveMessageAPI, handler RawM
 
 // Start starts consumer message loop
 // ctx must never time out
-func (c *RawMessageConsumer) Start(ctx context.Context) {
+func (c *MessageConsumer) Start(ctx context.Context) {
 	logger := log.FromContext(ctx).With(log.String("queue_name", c.queueName))
 	ctx = contexts.WithLogger(ctx, logger)
 	c.getQueueURL(ctx, 10)
@@ -118,7 +118,7 @@ func (c *RawMessageConsumer) Start(ctx context.Context) {
 	}
 }
 
-func (c *RawMessageConsumer) getQueueURL(ctx context.Context, retries int) {
+func (c *MessageConsumer) getQueueURL(ctx context.Context, retries int) {
 	input := &sqs.GetQueueUrlInput{
 		QueueName: aws.String(c.queueName),
 	}
@@ -135,7 +135,7 @@ func (c *RawMessageConsumer) getQueueURL(ctx context.Context, retries int) {
 	}
 }
 
-func (c *RawMessageConsumer) receiveMessage(ctx context.Context, input *sqs.ReceiveMessageInput) error {
+func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.ReceiveMessageInput) error {
 	output, err := c.api.ReceiveMessage(ctx, input)
 	if err != nil {
 		return err
@@ -153,7 +153,7 @@ func (c *RawMessageConsumer) receiveMessage(ctx context.Context, input *sqs.Rece
 			continue
 		}
 
-		if err = c.handler.HandleRawMessage(ctx, *msg.Body); err != nil {
+		if err = c.handler.HandleMessage(ctx, *msg.Body); err != nil {
 			logger.Error("handle raw message", log.Error(err))
 			continue
 		}

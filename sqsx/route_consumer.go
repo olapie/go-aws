@@ -24,18 +24,18 @@ type Router = router.Router[RoutableMessageHandlerFunc]
 
 type RoutableMessageConsumer struct {
 	*Router
-	*RawMessageConsumer
+	*MessageConsumer
 }
 
 func NewRoutableMessageConsumer(queueName string, api ReceiveMessageAPI, optFns ...func(options *RawConsumerOptions)) *RoutableMessageConsumer {
 	c := &RoutableMessageConsumer{
 		Router: router.New[RoutableMessageHandlerFunc](),
 	}
-	c.RawMessageConsumer = NewRawMessageConsumer(queueName, api, c, optFns...)
+	c.MessageConsumer = NewMessageConsumer(queueName, api, c, optFns...)
 	return c
 }
 
-func (c *RoutableMessageConsumer) HandleRawMessage(ctx context.Context, rawMessage string) error {
+func (c *RoutableMessageConsumer) HandleMessage(ctx context.Context, rawMessage string) error {
 	var message RoutableMessage
 	err := json.Unmarshal([]byte(rawMessage), &message)
 	if err != nil {
