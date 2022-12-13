@@ -1,13 +1,15 @@
 package sqsx
 
 import (
+	"code.olapie.com/log"
+	"code.olapie.com/sugar/contexts"
+	"code.olapie.com/sugar/httpx"
 	"context"
 	"errors"
-	"time"
-
-	"code.olapie.com/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"time"
 )
 
 // SendMessageAPI defines the interface for the GetQueueUrl and SendMessage functions.
@@ -61,10 +63,20 @@ func (c *MessageProducer) SendMessage(ctx context.Context, message string) (stri
 
 func (c *MessageProducer) SendDelayMessage(ctx context.Context, message string, delaySeconds int32) (string, error) {
 	input := &sqs.SendMessageInput{
-		MessageBody:  aws.String(message),
-		QueueUrl:     c.queueURL,
-		DelaySeconds: delaySeconds,
+		MessageBody:       aws.String(message),
+		QueueUrl:          c.queueURL,
+		DelaySeconds:      delaySeconds,
+		MessageAttributes: map[string]types.MessageAttributeValue{},
 	}
+
+	if traceID := contexts.GetTraceID(ctx); traceID != "" {
+		traceIDAttr := types.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String(traceID),
+		}
+		input.MessageAttributes[httpx.KeyTraceID] = traceIDAttr
+	}
+
 	output, err := c.api.SendMessage(ctx, input)
 	if err != nil {
 		return "", err

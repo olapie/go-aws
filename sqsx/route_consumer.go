@@ -7,15 +7,13 @@ import (
 
 	"code.olapie.com/log"
 	"code.olapie.com/router"
-	"code.olapie.com/sugar/contexts"
 	"code.olapie.com/sugar/errorx"
 )
 
 type RoutableMessage struct {
-	Method  string `json:"method"`
-	Path    string `json:"path"`
-	TraceID string `json:"trace_id"`
-	Body    []byte `json:"body"`
+	Method string `json:"method"`
+	Path   string `json:"path"`
+	Body   []byte `json:"body"`
 }
 
 type RoutableMessageHandlerFunc = router.HandlerFunc[[]byte, error]
@@ -42,9 +40,10 @@ func (c *RoutableMessageConsumer) HandleMessage(ctx context.Context, rawMessage 
 		return fmt.Errorf("unmarshal to routable message: %w", err)
 	}
 
-	ctx = contexts.WithTraceID(ctx, message.TraceID)
 	logger := log.FromContext(ctx)
-	logger.Info("received", log.String("method", message.Method), log.String("path", message.Path))
+	logger.Info("received routable message",
+		log.String("method", message.Method),
+		log.String("path", message.Path))
 
 	endpoint, _ := c.Match(message.Method, message.Path)
 	if endpoint != nil {

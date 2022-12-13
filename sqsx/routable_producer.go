@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
-	"code.olapie.com/sugar/contexts"
 )
 
 type RoutableMessageProducer struct {
@@ -25,10 +23,9 @@ func (c *RoutableMessageProducer) SendMessage(ctx context.Context, method, path 
 
 func (c *RoutableMessageProducer) SendDelayMessage(ctx context.Context, method, path string, body []byte, delaySeconds int32) (string, error) {
 	message := &RoutableMessage{
-		Method:  method,
-		Path:    path,
-		TraceID: contexts.GetTraceID(ctx),
-		Body:    body,
+		Method: method,
+		Path:   path,
+		Body:   body,
 	}
 
 	data, err := json.Marshal(message)

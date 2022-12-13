@@ -1,8 +1,11 @@
 package sqsx
 
 import (
+	"code.olapie.com/sugar/httpx"
 	"context"
+	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"time"
 
 	"code.olapie.com/log"
@@ -88,7 +91,8 @@ func NewMessageConsumer(queueName string, api ReceiveMessageAPI, handler Message
 }
 
 // Start starts consumer message loop
-// ctx must never time out
+// If it's a service, ctx must never time out
+// If it's a lambda function, ctx timeout should be a little less than lambda's timeout
 func (c *MessageConsumer) Start(ctx context.Context) {
 	logger := log.FromContext(ctx).With(log.String("queue_name", c.queueName))
 	ctx = contexts.WithLogger(ctx, logger)
@@ -110,8 +114,13 @@ func (c *MessageConsumer) Start(ctx context.Context) {
 	backoff := 100 * time.Millisecond
 	for {
 		err := c.receiveMessage(ctx, input)
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			logger.Error("receive sqs message", log.Error(err))
+			return
+		}
+
 		if err != nil {
-			logger.Error("receive raw message", log.Error(err))
+			logger.Error("receive sqs message", log.Error(err))
 			backoff += 100 * time.Millisecond
 			time.Sleep(backoff)
 		}
@@ -147,7 +156,16 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 			msgID = *msg.MessageId
 		}
 
-		logger := log.FromContext(ctx).With(log.String("message_id", msgID))
+		var traceID string
+		if attr, ok := msg.MessageAttributes[httpx.KeyTraceID]; ok && attr.StringValue != nil {
+			traceID = *(attr.StringValue)
+		} else {
+			traceID = uuid.NewString()
+		}
+		ctx = contexts.WithTraceID(ctx, traceID)
+		logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
+		logger.Info("received sqs message", log.String("message_id", msgID))
+
 		if msg.Body == nil || *msg.Body == "" {
 			logger.Warn("empty message")
 			continue
@@ -157,13 +175,16 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 			logger.Error("handle raw message", log.Error(err))
 			continue
 		}
-		logger.Info("handled raw message successfully")
+
+		logger.Info("handled sqs message successfully")
+
 		_, err = c.api.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 			QueueUrl:      c.queueURL,
 			ReceiptHandle: msg.ReceiptHandle,
 		})
+
 		if err != nil {
-			logger.Warn("failed to delete message", log.Error(err))
+			logger.Warn("delete sqs message", log.Error(err))
 		}
 	}
 	return nil
