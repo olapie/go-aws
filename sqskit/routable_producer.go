@@ -1,4 +1,4 @@
-package sqsx
+package sqskit
 
 import (
 	"context"

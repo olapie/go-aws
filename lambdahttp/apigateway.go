@@ -1,4 +1,4 @@
-package lambda
+package lambdahttp
 
 import (
 	"context"
@@ -78,7 +78,7 @@ func JSON(status int, v any) *Response {
 	return resp
 }
 
-func BuildContext(ctx context.Context, request *events.APIGatewayV2HTTPRequest) context.Context {
+func BuildContext(ctx context.Context, request *Request) context.Context {
 	appID := httpx.GetHeader(request.Headers, httpx.KeyAppID)
 	clientID := httpx.GetHeader(request.Headers, httpx.KeyClientID)
 	traceID := httpx.GetHeader(request.Headers, httpx.KeyTraceID)

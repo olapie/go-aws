@@ -1,18 +1,18 @@
-package sqsx
+package sqskit
 
 import (
-	"code.olapie.com/sugar/httpx"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"time"
 
 	"code.olapie.com/log"
 	"code.olapie.com/sugar/contexts"
+	"code.olapie.com/sugar/httpx"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/google/uuid"
 )
 
 const MaxVisibilityTimeout = 60 * 60 // one hour

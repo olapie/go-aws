@@ -1,15 +1,16 @@
-package sqsx
+package sqskit
 
 import (
+	"context"
+	"errors"
+	"time"
+
 	"code.olapie.com/log"
 	"code.olapie.com/sugar/contexts"
 	"code.olapie.com/sugar/httpx"
-	"context"
-	"errors"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"time"
 )
 
 // SendMessageAPI defines the interface for the GetQueueUrl and SendMessage functions.
