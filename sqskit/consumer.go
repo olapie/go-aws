@@ -92,7 +92,6 @@ func NewMessageConsumer(queueName string, api ReceiveMessageAPI, handler Message
 
 // Start starts consumer message loop
 // If it's a service, ctx must never time out
-// If it's a lambda function, ctx timeout should be a little less than lambda's timeout
 func (c *MessageConsumer) Start(ctx context.Context) {
 	logger := log.FromContext(ctx).With(log.String("queue_name", c.queueName))
 	ctx = contexts.WithLogger(ctx, logger)
