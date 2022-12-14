@@ -94,7 +94,7 @@ func NewMessageConsumer(queueName string, api ReceiveMessageAPI, handler Message
 // If it's a service, ctx must never time out
 func (c *MessageConsumer) Start(ctx context.Context) {
 	logger := log.FromContext(ctx).With(log.String("queue_name", c.queueName))
-	ctx = contexts.WithLogger(ctx, logger)
+	ctx = log.BuildContext(ctx, logger)
 	c.getQueueURL(ctx, 10)
 	if c.queueURL == nil {
 		logger.Info("Stopping consumer due to no queue url")

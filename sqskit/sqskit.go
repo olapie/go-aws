@@ -63,6 +63,6 @@ func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]eve
 
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
 	ctx = contexts.WithTraceID(ctx, traceID)
-	ctx = contexts.WithLogger(ctx, logger)
+	ctx = log.BuildContext(ctx, logger)
 	return ctx
 }
