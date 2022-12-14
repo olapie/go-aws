@@ -88,16 +88,14 @@ func (s *S3Bucket) Get(ctx context.Context, id string) ([]byte, error) {
 
 func (s *S3Bucket) Exists(ctx context.Context, id string) (bool, error) {
 	_, err := s.getHeadObject(ctx, id)
-	if err == nil {
+	switch {
+	case errorx.IsNotExist(err):
+		return false, nil
+	case err != nil:
+		return false, err
+	default:
 		return true, nil
 	}
-
-	if apiErr, ok := errorx.CauseOf[smithy.APIError](err); ok {
-		if apiErr.ErrorCode() == s3ErrorNotFound.ErrorCode() {
-			return false, nil
-		}
-	}
-	return false, err
 }
 
 func (s *S3Bucket) Delete(ctx context.Context, id string) error {
@@ -178,5 +176,14 @@ func (s *S3Bucket) getHeadObject(ctx context.Context, id string) (*s3.HeadObject
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(id),
 	}
-	return s.client.HeadObject(ctx, input)
+	output, err := s.client.HeadObject(ctx, input)
+	if err != nil {
+		if apiErr, ok := errorx.CauseOf[smithy.APIError](err); ok {
+			if apiErr.ErrorCode() == s3ErrorNotFound.ErrorCode() {
+				return nil, errorx.NotFound("id")
+			}
+		}
+		return nil, err
+	}
+	return output, nil
 }
