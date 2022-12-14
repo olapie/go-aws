@@ -5,7 +5,7 @@ go 1.19
 require (
 	code.olapie.com/log v1.0.2
 	code.olapie.com/router v1.0.3
-	code.olapie.com/sugar v1.3.9
+	code.olapie.com/sugar v1.5.7
 	github.com/aws/aws-lambda-go v1.35.0
 	github.com/aws/aws-sdk-go-v2 v1.17.2
 	github.com/aws/aws-sdk-go-v2/config v1.18.2
@@ -45,6 +45,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
+	golang.org/x/text v0.5.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

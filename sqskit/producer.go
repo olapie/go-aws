@@ -6,11 +6,8 @@ import (
 	"time"
 
 	"code.olapie.com/log"
-	"code.olapie.com/sugar/contexts"
-	"code.olapie.com/sugar/httpx"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
 // SendMessageAPI defines the interface for the GetQueueUrl and SendMessage functions.
@@ -67,15 +64,7 @@ func (c *MessageProducer) SendDelayMessage(ctx context.Context, message string, 
 		MessageBody:       aws.String(message),
 		QueueUrl:          c.queueURL,
 		DelaySeconds:      delaySeconds,
-		MessageAttributes: map[string]types.MessageAttributeValue{},
-	}
-
-	if traceID := contexts.GetTraceID(ctx); traceID != "" {
-		traceIDAttr := types.MessageAttributeValue{
-			DataType:    aws.String("String"),
-			StringValue: aws.String(traceID),
-		}
-		input.MessageAttributes[httpx.KeyTraceID] = traceIDAttr
+		MessageAttributes: BuildMessageAttributesFromContext(ctx),
 	}
 
 	output, err := c.api.SendMessage(ctx, input)
