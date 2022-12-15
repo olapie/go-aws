@@ -35,7 +35,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 	ctx = BuildContext(ctx, request)
 	httpInfo := request.RequestContext.HTTP
 	logger := log.FromContext(ctx)
-	logger.Info("received",
+	logger.Info("BEGIN",
 		log.String("header", jsonx.ToString(request.Headers)),
 		log.String("path", request.RawPath),
 		log.String("query", request.RawQueryString),
@@ -46,19 +46,19 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 
 	defer func() {
 		if msg := recover(); msg != nil {
-			logger.Error("caught a panic", log.Any("error", msg))
+			logger.Error("PANIC", log.Any("error", msg))
 			resp = Error(errors.New(fmt.Sprint(msg)))
 			return
 		}
 
 		logger := log.FromContext(ctx).With(log.Int("status_code", resp.StatusCode))
 		if resp.StatusCode < 400 {
-			logger.Info("succeeded")
+			logger.Info("END")
 		} else {
 			if len(resp.Body) < 1024 {
-				logger.Error("failed", log.String("body", resp.Body))
+				logger.Error("END", log.String("body", resp.Body))
 			} else {
-				logger.Error("failed")
+				logger.Error("END")
 			}
 		}
 
