@@ -145,9 +145,13 @@ func (c *MessageConsumer) getQueueURL(ctx context.Context, retries int) {
 
 func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.ReceiveMessageInput) error {
 	output, err := c.api.ReceiveMessage(ctx, input)
+	logger := log.FromContext(ctx)
 	if err != nil {
+		logger.Error("ReceiveMessage", log.Error(err))
 		return err
 	}
+
+	logger.Sugar().Errorf("Received %d messages\n", len(output.Messages))
 
 	for _, msg := range output.Messages {
 		var msgID string
@@ -162,20 +166,20 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 			traceID = uuid.NewString()
 		}
 		ctx = contexts.WithTraceID(ctx, traceID)
-		logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
-		logger.Info("received sqs message", log.String("message_id", msgID))
+		msgLogger := logger.With(log.String("trace_id", traceID))
+		msgLogger.Info("START", log.String("message_id", msgID))
 
 		if msg.Body == nil || *msg.Body == "" {
-			logger.Warn("empty message")
+			msgLogger.Warn("empty message")
 			continue
 		}
 
 		if err = c.handler.HandleMessage(ctx, *msg.Body); err != nil {
-			logger.Error("handle raw message", log.Error(err))
+			msgLogger.Error("handler.HandleMessage", log.Error(err))
 			continue
 		}
 
-		logger.Info("handled sqs message successfully")
+		msgLogger.Info("END")
 
 		_, err = c.api.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 			QueueUrl:      c.queueURL,
@@ -183,7 +187,7 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		})
 
 		if err != nil {
-			logger.Warn("delete sqs message", log.Error(err))
+			msgLogger.Warn("api.DeleteMessage", log.Error(err))
 		}
 	}
 	return nil

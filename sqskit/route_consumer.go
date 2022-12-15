@@ -41,7 +41,7 @@ func (c *RoutableMessageConsumer) HandleMessage(ctx context.Context, rawMessage 
 	}
 
 	logger := log.FromContext(ctx)
-	logger.Info("received routable message",
+	logger.Info("START",
 		log.String("method", message.Method),
 		log.String("path", message.Path))
 
