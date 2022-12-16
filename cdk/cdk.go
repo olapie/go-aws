@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53targets"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 	apigatewayv2alpha "github.com/aws/aws-cdk-go/awscdkapigatewayv2alpha/v2"
 	apigatewayv2integrationsalpha "github.com/aws/aws-cdk-go/awscdkapigatewayv2integrationsalpha/v2"
 	"github.com/aws/constructs-go/constructs/v10"
@@ -38,6 +39,8 @@ type DomainName = apigatewayv2alpha.DomainName
 type DomainNameProps = apigatewayv2alpha.DomainNameProps
 type HttpApi = apigatewayv2alpha.HttpApi
 type HttpMethod = apigatewayv2alpha.HttpMethod
+type QueueProps = awssqs.QueueProps
+type Queue = awssqs.Queue
 
 type Env struct {
 	Account string
@@ -150,6 +153,37 @@ func NewHttpApi(scope constructs.Construct, domainName DomainName, fn awslambda.
 	}
 
 	return httpApi
+}
+
+func NewQueue(scope constructs.Construct, env *Env, name string, props *QueueProps) Queue {
+	name = env.GetFullName(name)
+	cdkName := naming.ToClassName(name)
+	if props.MaxMessageSizeBytes == nil {
+		props.MaxMessageSizeBytes = rtx.Addr(float64(64 * 1024))
+	}
+	if props.QueueName == nil {
+		props.QueueName = rtx.Addr(name)
+	}
+	if props.RetentionPeriod == nil {
+		props.RetentionPeriod = awscdk.Duration_Hours(rtx.Addr(2.0))
+	}
+
+	if props.VisibilityTimeout == nil {
+		props.VisibilityTimeout = awscdk.Duration_Seconds(rtx.Addr(30.0))
+	}
+
+	dlq := awssqs.NewQueue(scope, rtx.Addr(cdkName+"DeadLetterQueue"), &QueueProps{
+		MaxMessageSizeBytes:    props.MaxMessageSizeBytes,
+		QueueName:              rtx.Addr(*props.QueueName + "-dlq"),
+		ReceiveMessageWaitTime: nil,
+		RetentionPeriod:        awscdk.Duration_Days(rtx.Addr(3.0)),
+		VisibilityTimeout:      props.VisibilityTimeout,
+	})
+	props.DeadLetterQueue = &awssqs.DeadLetterQueue{
+		MaxReceiveCount: rtx.Addr(3.0),
+		Queue:           dlq,
+	}
+	return awssqs.NewQueue(scope, rtx.Addr(cdkName+"Queue"), props)
 }
 
 func newFunctionRole(scope constructs.Construct, env *Env, funcFullName string) awsiam.Role {
