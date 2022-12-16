@@ -1,10 +1,12 @@
 package cdk
 
 import (
+	"fmt"
+	"strings"
+
 	"code.olapie.com/sugar/naming"
 	"code.olapie.com/sugar/rtx"
 	"code.olapie.com/sugar/slicing"
-	"fmt"
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
@@ -12,11 +14,11 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53targets"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awss3"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 	apigatewayv2alpha "github.com/aws/aws-cdk-go/awscdkapigatewayv2alpha/v2"
 	apigatewayv2integrationsalpha "github.com/aws/aws-cdk-go/awscdkapigatewayv2integrationsalpha/v2"
 	"github.com/aws/constructs-go/constructs/v10"
-	"strings"
 )
 
 type Region string
@@ -41,6 +43,7 @@ type HttpApi = apigatewayv2alpha.HttpApi
 type HttpMethod = apigatewayv2alpha.HttpMethod
 type QueueProps = awssqs.QueueProps
 type Queue = awssqs.Queue
+type Bucket = awss3.Bucket
 
 type Env struct {
 	Account string
@@ -184,6 +187,16 @@ func NewQueue(scope constructs.Construct, env *Env, name string, props *QueuePro
 		Queue:           dlq,
 	}
 	return awssqs.NewQueue(scope, rtx.Addr(cdkName+"Queue"), props)
+}
+
+func NewBucket(scope constructs.Construct, name string) Bucket {
+	cdkName := naming.ToClassName(name) + "Bucket"
+	return awss3.NewBucket(scope, rtx.Addr(cdkName), &awss3.BucketProps{
+		AutoDeleteObjects: rtx.Addr(false),
+		BucketName:        rtx.Addr(name),
+		Versioned:         rtx.Addr(true),
+		RemovalPolicy:     awscdk.RemovalPolicy_RETAIN,
+	})
 }
 
 func newFunctionRole(scope constructs.Construct, env *Env, funcFullName string) awsiam.Role {
