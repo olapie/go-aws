@@ -21,12 +21,10 @@ import (
 	"github.com/aws/constructs-go/constructs/v10"
 )
 
-type Region string
-
 const (
-	USEast1 Region = "us-east-1"
-	USWest1 Region = "us-west-1"
-	EUWest1 Region = "eu-west-1"
+	USEast1 string = "us-east-1"
+	USWest1 string = "us-west-1"
+	EUWest1 string = "eu-west-1"
 )
 
 const (
@@ -44,6 +42,7 @@ type HttpMethod = apigatewayv2alpha.HttpMethod
 type QueueProps = awssqs.QueueProps
 type Queue = awssqs.Queue
 type Bucket = awss3.Bucket
+type Function = awslambda.Function
 
 type Env struct {
 	Account string
@@ -53,7 +52,7 @@ type Env struct {
 }
 
 func (e *Env) GetFullName(baseName string) string {
-	return strings.Join([]string{e.Stage, e.Stage, baseName}, "-")
+	return strings.Join([]string{e.Stage, e.Service, baseName}, "-")
 }
 
 func (e *Env) GetResourceName(typ, baseName string) string {
@@ -80,7 +79,8 @@ func NewDomainName(scope constructs.Construct, hostedZone, certificateArn, subDo
 	})
 }
 
-func NewRecord(scope constructs.Construct, hostedZone, subDomain string, domainName DomainName) ARecord {
+func NewRecord(scope constructs.Construct, hostedZone string, domainName DomainName) ARecord {
+	subDomain := strings.ReplaceAll(*domainName.Name(), "."+hostedZone, "")
 	zone := awsroute53.HostedZone_FromLookup(scope, rtx.Addr("Zone"), &awsroute53.HostedZoneProviderProps{
 		DomainName: rtx.Addr(hostedZone),
 	})
@@ -92,7 +92,7 @@ func NewRecord(scope constructs.Construct, hostedZone, subDomain string, domainN
 	return awsroute53.NewARecord(scope, rtx.Addr(naming.ToClassName(subDomain)+"ARecord"), &awsroute53.ARecordProps{
 		Zone:           zone,
 		Comment:        nil,
-		DeleteExisting: nil,
+		DeleteExisting: rtx.Addr(true),
 		RecordName:     rtx.Addr(subDomain + "." + hostedZone),
 		Ttl:            nil,
 		Target:         awsroute53.RecordTarget_FromAlias(domainProperties),
@@ -130,6 +130,8 @@ func NewFunction(scope constructs.Construct, env *Env, name string, props *Funct
 	if props.Role == nil {
 		props.Role = newFunctionRole(scope, env, funcName)
 	}
+
+	props.Runtime = awslambda.Runtime_GO_1_X()
 	return awslambda.NewFunction(scope, rtx.Addr(cdkName), props)
 }
 
@@ -161,6 +163,9 @@ func NewHttpApi(scope constructs.Construct, domainName DomainName, fn awslambda.
 func NewQueue(scope constructs.Construct, env *Env, name string, props *QueueProps) Queue {
 	name = env.GetFullName(name)
 	cdkName := naming.ToClassName(name)
+	if props == nil {
+		props = new(QueueProps)
+	}
 	if props.MaxMessageSizeBytes == nil {
 		props.MaxMessageSizeBytes = rtx.Addr(float64(64 * 1024))
 	}
