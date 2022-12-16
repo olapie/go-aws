@@ -6,7 +6,6 @@ import (
 
 	"code.olapie.com/sugar/naming"
 	"code.olapie.com/sugar/rtx"
-	"code.olapie.com/sugar/slicing"
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
@@ -43,6 +42,7 @@ type QueueProps = awssqs.QueueProps
 type Queue = awssqs.Queue
 type Bucket = awss3.Bucket
 type Function = awslambda.Function
+type HttpLambdaIntegration = apigatewayv2integrationsalpha.HttpLambdaIntegration
 
 type Env struct {
 	Account string
@@ -66,21 +66,8 @@ type DomainConfig struct {
 
 type FunctionProps = awslambda.FunctionProps
 
-func NewDomainName(scope constructs.Construct, hostedZone, certificateArn, subDomain string) DomainName {
-	cdkName := naming.ToClassName(subDomain)
-	certificate := awscertificatemanager.Certificate_FromCertificateArn(scope,
-		rtx.Addr(cdkName+"Certificate"),
-		rtx.Addr(certificateArn),
-	)
-
-	return apigatewayv2alpha.NewDomainName(scope, rtx.Addr(cdkName+"DomainName"), &DomainNameProps{
-		Certificate: certificate,
-		DomainName:  rtx.Addr(subDomain + "." + hostedZone),
-	})
-}
-
-func NewRecord(scope constructs.Construct, hostedZone string, domainName DomainName) ARecord {
-	subDomain := strings.ReplaceAll(*domainName.Name(), "."+hostedZone, "")
+func NewARecord(scope constructs.Construct, hostedZone string, certificateArn, subDomain string) (ARecord, DomainName) {
+	domainName := newDomainName(scope, hostedZone, certificateArn, subDomain)
 	zone := awsroute53.HostedZone_FromLookup(scope, rtx.Addr("Zone"), &awsroute53.HostedZoneProviderProps{
 		DomainName: rtx.Addr(hostedZone),
 	})
@@ -89,7 +76,7 @@ func NewRecord(scope constructs.Construct, hostedZone string, domainName DomainN
 		domainName.RegionalDomainName(),
 		domainName.RegionalHostedZoneId())
 
-	return awsroute53.NewARecord(scope, rtx.Addr(naming.ToClassName(subDomain)+"ARecord"), &awsroute53.ARecordProps{
+	record := awsroute53.NewARecord(scope, rtx.Addr(naming.ToClassName(subDomain)+"ARecord"), &awsroute53.ARecordProps{
 		Zone:           zone,
 		Comment:        nil,
 		DeleteExisting: rtx.Addr(true),
@@ -97,6 +84,7 @@ func NewRecord(scope constructs.Construct, hostedZone string, domainName DomainN
 		Ttl:            nil,
 		Target:         awsroute53.RecordTarget_FromAlias(domainProperties),
 	})
+	return record, domainName
 }
 
 func NewFunction(scope constructs.Construct, env *Env, name string, props *FunctionProps) awslambda.Function {
@@ -135,11 +123,15 @@ func NewFunction(scope constructs.Construct, env *Env, name string, props *Funct
 	return awslambda.NewFunction(scope, rtx.Addr(cdkName), props)
 }
 
-func NewHttpApi(scope constructs.Construct, domainName DomainName, fn awslambda.Function, pathToMethods map[string][]string) HttpApi {
-	name := strings.Split(*domainName.Name(), ".")[0] + "-" + *fn.FunctionName()
+type HttpApiEndpoint struct {
+	FunctionName string
+	Function     Function
+	Path         string
+	Methods      []HttpMethod
+}
+
+func NewHttpApi(scope constructs.Construct, name string, domainName DomainName, endpoints []HttpApiEndpoint) HttpApi {
 	cdkName := naming.ToClassName(name)
-	integration := apigatewayv2integrationsalpha.NewHttpLambdaIntegration(rtx.Addr(cdkName+"HttpLambdaIntegration"), fn,
-		&apigatewayv2integrationsalpha.HttpLambdaIntegrationProps{})
 	httpApi := apigatewayv2alpha.NewHttpApi(scope, rtx.Addr(cdkName+"HttpApi"), &apigatewayv2alpha.HttpApiProps{
 		ApiName: rtx.Addr(name),
 		DefaultDomainMapping: &apigatewayv2alpha.DomainMappingOptions{
@@ -147,16 +139,23 @@ func NewHttpApi(scope constructs.Construct, domainName DomainName, fn awslambda.
 		},
 	})
 
-	for path, methods := range pathToMethods {
+	funcToIntegration := make(map[Function]HttpLambdaIntegration)
+	for _, e := range endpoints {
+		integration := funcToIntegration[e.Function]
+		if integration == nil {
+			integration = apigatewayv2integrationsalpha.NewHttpLambdaIntegration(rtx.Addr(
+				e.FunctionName+"HttpLambdaIntegration"),
+				e.Function,
+				&apigatewayv2integrationsalpha.HttpLambdaIntegrationProps{})
+			funcToIntegration[e.Function] = integration
+		}
+
 		httpApi.AddRoutes(&apigatewayv2alpha.AddRoutesOptions{
 			Integration: integration,
-			Path:        rtx.Addr(path),
-			Methods: rtx.Addr(slicing.MustTransform(methods, func(a string) HttpMethod {
-				return HttpMethod(strings.ToUpper(a))
-			})),
+			Path:        rtx.Addr(e.Path),
+			Methods:     rtx.Addr(e.Methods),
 		})
 	}
-
 	return httpApi
 }
 
@@ -223,4 +222,17 @@ func newFunctionRole(scope constructs.Construct, env *Env, funcFullName string) 
 		Resources: rtx.Addr([]*string{rtx.Addr(fmt.Sprintf("arn:aws:logs:%s:%s:*", env.Region, env.Account))}),
 	}))
 	return role
+}
+
+func newDomainName(scope constructs.Construct, hostedZone, certificateArn, subDomain string) DomainName {
+	cdkName := naming.ToClassName(subDomain)
+	certificate := awscertificatemanager.Certificate_FromCertificateArn(scope,
+		rtx.Addr(cdkName+"Certificate"),
+		rtx.Addr(certificateArn),
+	)
+
+	return apigatewayv2alpha.NewDomainName(scope, rtx.Addr(cdkName+"DomainName"), &DomainNameProps{
+		Certificate: certificate,
+		DomainName:  rtx.Addr(subDomain + "." + hostedZone),
+	})
 }
