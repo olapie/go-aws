@@ -36,6 +36,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 	httpInfo := request.RequestContext.HTTP
 	logger := log.FromContext(ctx)
 	logger.Info("BEGIN",
+		log.String("domain", request.RequestContext.DomainName),
 		log.String("header", jsonx.ToString(request.Headers)),
 		log.String("path", request.RawPath),
 		log.String("query", request.RawQueryString),

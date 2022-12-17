@@ -68,7 +68,8 @@ type FunctionProps = awslambda.FunctionProps
 
 func NewARecord(scope constructs.Construct, hostedZone string, certificateArn, subDomain string) (ARecord, DomainName) {
 	domainName := newDomainName(scope, hostedZone, certificateArn, subDomain)
-	zone := awsroute53.HostedZone_FromLookup(scope, rtx.Addr("Zone"), &awsroute53.HostedZoneProviderProps{
+	zoneCDKName := naming.ToClassName(hostedZone) + naming.ToClassName(subDomain) + "Zone"
+	zone := awsroute53.HostedZone_FromLookup(scope, rtx.Addr(zoneCDKName), &awsroute53.HostedZoneProviderProps{
 		DomainName: rtx.Addr(hostedZone),
 	})
 
@@ -126,35 +127,49 @@ func NewFunction(scope constructs.Construct, env *Env, name string, props *Funct
 type HttpApiEndpoint struct {
 	FunctionName string
 	Function     Function
-	Path         string
-	Methods      []HttpMethod
+
+	Path    string
+	Methods []HttpMethod
+
+	Default bool
 }
 
 func NewHttpApi(scope constructs.Construct, name string, domainName DomainName, endpoints []HttpApiEndpoint) HttpApi {
 	cdkName := naming.ToClassName(name)
-	httpApi := apigatewayv2alpha.NewHttpApi(scope, rtx.Addr(cdkName+"HttpApi"), &apigatewayv2alpha.HttpApiProps{
-		ApiName: rtx.Addr(name),
-		DefaultDomainMapping: &apigatewayv2alpha.DomainMappingOptions{
-			DomainName: domainName,
-		},
-	})
-
+	var routes []*apigatewayv2alpha.AddRoutesOptions
 	funcToIntegration := make(map[Function]HttpLambdaIntegration)
+	var defaultIntegration HttpLambdaIntegration
 	for _, e := range endpoints {
 		integration := funcToIntegration[e.Function]
 		if integration == nil {
 			integration = apigatewayv2integrationsalpha.NewHttpLambdaIntegration(rtx.Addr(
-				e.FunctionName+"HttpLambdaIntegration"),
+				e.FunctionName+cdkName+"HttpLambdaIntegration"),
 				e.Function,
 				&apigatewayv2integrationsalpha.HttpLambdaIntegrationProps{})
 			funcToIntegration[e.Function] = integration
 		}
 
-		httpApi.AddRoutes(&apigatewayv2alpha.AddRoutesOptions{
+		if e.Default {
+			defaultIntegration = integration
+			continue
+		}
+		routes = append(routes, &apigatewayv2alpha.AddRoutesOptions{
 			Integration: integration,
 			Path:        rtx.Addr(e.Path),
 			Methods:     rtx.Addr(e.Methods),
 		})
+	}
+
+	httpApi := apigatewayv2alpha.NewHttpApi(scope, rtx.Addr(cdkName+"HttpApi"), &apigatewayv2alpha.HttpApiProps{
+		ApiName: rtx.Addr(name),
+		DefaultDomainMapping: &apigatewayv2alpha.DomainMappingOptions{
+			DomainName: domainName,
+		},
+		DefaultIntegration: defaultIntegration,
+	})
+
+	for _, route := range routes {
+		httpApi.AddRoutes(route)
 	}
 	return httpApi
 }

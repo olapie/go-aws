@@ -78,6 +78,32 @@ func JSON(status int, v any) *Response {
 	return resp
 }
 
+func CSS200(cssText string) *Response {
+	return CSS(http.StatusOK, cssText)
+}
+
+func CSS(status int, cssText string) *Response {
+	resp := new(events.APIGatewayV2HTTPResponse)
+	resp.StatusCode = status
+	resp.Headers = make(map[string]string)
+	resp.Headers[httpx.KeyContentType] = httpx.CSS
+	resp.Body = cssText
+	return resp
+}
+
+func HTML200(htmlText string) *Response {
+	return HTML(http.StatusOK, htmlText)
+}
+
+func HTML(status int, htmlText string) *Response {
+	resp := new(events.APIGatewayV2HTTPResponse)
+	resp.StatusCode = status
+	resp.Headers = make(map[string]string)
+	resp.Headers[httpx.KeyContentType] = httpx.HtmlUTF8
+	resp.Body = htmlText
+	return resp
+}
+
 func BuildContext(ctx context.Context, request *Request) context.Context {
 	appID := httpx.GetHeader(request.Headers, httpx.KeyAppID)
 	clientID := httpx.GetHeader(request.Headers, httpx.KeyClientID)
