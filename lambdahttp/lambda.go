@@ -10,7 +10,7 @@ import (
 
 	"code.olapie.com/log"
 	"code.olapie.com/router"
-	"code.olapie.com/sugar/contexts"
+	"code.olapie.com/sugar/ctxutil"
 	"code.olapie.com/sugar/errorx"
 	"code.olapie.com/sugar/httpx"
 	"code.olapie.com/sugar/jsonx"
@@ -35,8 +35,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 	ctx = BuildContext(ctx, request)
 	httpInfo := request.RequestContext.HTTP
 	logger := log.FromContext(ctx)
-	logger.Info("BEGIN",
-		log.String("domain", request.RequestContext.DomainName),
+	logger.Info("Start",
 		log.String("header", jsonx.ToString(request.Headers)),
 		log.String("path", request.RawPath),
 		log.String("query", request.RawQueryString),
@@ -47,26 +46,26 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 
 	defer func() {
 		if msg := recover(); msg != nil {
-			logger.Error("PANIC", log.Any("error", msg))
+			logger.Error("Panic", log.Any("error", msg))
 			resp = Error(errors.New(fmt.Sprint(msg)))
 			return
 		}
 
 		logger := log.FromContext(ctx).With(log.Int("status_code", resp.StatusCode))
 		if resp.StatusCode < 400 {
-			logger.Info("END")
+			logger.Info("End")
 		} else {
 			if len(resp.Body) < 1024 {
-				logger.Error("END", log.String("body", resp.Body))
+				logger.Error("End", log.String("body", resp.Body))
 			} else {
-				logger.Error("END")
+				logger.Error("End")
 			}
 		}
 
 		if resp.Headers == nil {
 			resp.Headers = make(map[string]string)
 		}
-		httpx.SetTraceID(resp.Headers, contexts.GetTraceID(ctx))
+		httpx.SetTraceID(resp.Headers, ctxutil.GetTraceID(ctx))
 	}()
 
 	endpoint, _ := r.Match(httpInfo.Method, request.RawPath)

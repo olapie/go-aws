@@ -2,7 +2,7 @@ package sqskit
 
 import (
 	"code.olapie.com/log"
-	"code.olapie.com/sugar/contexts"
+	"code.olapie.com/sugar/ctxutil"
 	"code.olapie.com/sugar/httpx"
 	"code.olapie.com/sugar/must"
 	"context"
@@ -15,7 +15,7 @@ import (
 
 func BuildMessageAttributesFromContext(ctx context.Context) map[string]types.MessageAttributeValue {
 	attrs := make(map[string]types.MessageAttributeValue)
-	if traceID := contexts.GetTraceID(ctx); traceID != "" {
+	if traceID := ctxutil.GetTraceID(ctx); traceID != "" {
 		attr := types.MessageAttributeValue{
 			DataType:    aws.String("String"),
 			StringValue: aws.String(traceID),
@@ -23,13 +23,13 @@ func BuildMessageAttributesFromContext(ctx context.Context) map[string]types.Mes
 		attrs[httpx.KeyTraceID] = attr
 	}
 
-	if login := contexts.GetLogin[int64](ctx); login != 0 {
+	if login := ctxutil.GetLogin[int64](ctx); login != 0 {
 		attr := types.MessageAttributeValue{
 			DataType:    aws.String("Number"),
 			StringValue: aws.String(fmt.Sprint(login)),
 		}
 		attrs[httpx.KeyUserID] = attr
-	} else if login := contexts.GetLogin[string](ctx); login != "" {
+	} else if login := ctxutil.GetLogin[string](ctx); login != "" {
 		attr := types.MessageAttributeValue{
 			DataType:    aws.String("String"),
 			StringValue: aws.String(login),
@@ -45,14 +45,14 @@ func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]eve
 	if len(attrs) != 0 {
 		if attr, ok := attrs[httpx.KeyTraceID]; ok && attr.StringValue != nil {
 			traceID = *attr.StringValue
-			ctx = contexts.WithTraceID(ctx, *attr.StringValue)
+			ctx = ctxutil.WithTraceID(ctx, *attr.StringValue)
 		}
 
 		if attr, ok := attrs[httpx.KeyUserID]; ok && attr.StringValue != nil {
 			if attr.DataType == "String" {
-				ctx = contexts.WithLogin(ctx, *attr.StringValue)
+				ctx = ctxutil.WithLogin(ctx, *attr.StringValue)
 			} else {
-				ctx = contexts.WithLogin(ctx, must.ToInt64(*attr.StringValue))
+				ctx = ctxutil.WithLogin(ctx, must.ToInt64(*attr.StringValue))
 			}
 		}
 	}
@@ -62,7 +62,7 @@ func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]eve
 	}
 
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
-	ctx = contexts.WithTraceID(ctx, traceID)
+	ctx = ctxutil.WithTraceID(ctx, traceID)
 	ctx = log.BuildContext(ctx, logger)
 	return ctx
 }

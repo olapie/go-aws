@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"code.olapie.com/log"
-	"code.olapie.com/sugar/contexts"
+	"code.olapie.com/sugar/ctxutil"
 	"code.olapie.com/sugar/httpx"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -165,7 +165,7 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		} else {
 			traceID = uuid.NewString()
 		}
-		ctx = contexts.WithTraceID(ctx, traceID)
+		ctx = ctxutil.WithTraceID(ctx, traceID)
 		msgLogger := logger.With(log.String("trace_id", traceID))
 		msgLogger.Info("START", log.String("message_id", msgID))
 

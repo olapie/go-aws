@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"code.olapie.com/log"
-	"code.olapie.com/sugar/contexts"
+	"code.olapie.com/sugar/ctxutil"
 	"code.olapie.com/sugar/errorx"
 	"code.olapie.com/sugar/httpx"
 	"code.olapie.com/sugar/jsonx"
@@ -95,6 +95,13 @@ func HTML200(htmlText string) *Response {
 	return HTML(http.StatusOK, htmlText)
 }
 
+func HTML200OrError(htmlText string, err error) *Response {
+	if err != nil {
+		return Error(err)
+	}
+	return HTML(http.StatusOK, htmlText)
+}
+
 func HTML(status int, htmlText string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
@@ -111,9 +118,9 @@ func BuildContext(ctx context.Context, request *Request) context.Context {
 	if traceID == "" {
 		traceID = uuid.NewString()
 	}
-	ctx = contexts.WithAppID(ctx, appID)
-	ctx = contexts.WithClientID(ctx, clientID)
-	ctx = contexts.WithTraceID(ctx, traceID)
+	ctx = ctxutil.WithAppID(ctx, appID)
+	ctx = ctxutil.WithClientID(ctx, clientID)
+	ctx = ctxutil.WithTraceID(ctx, traceID)
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
 	ctx = log.BuildContext(ctx, logger)
 	return ctx
