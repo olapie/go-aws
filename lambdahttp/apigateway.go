@@ -111,6 +111,18 @@ func HTML(status int, htmlText string) *Response {
 	return resp
 }
 
+func Redirect(permanent bool, location string) *Response {
+	resp := new(events.APIGatewayV2HTTPResponse)
+	if permanent {
+		resp.StatusCode = http.StatusMovedPermanently
+	} else {
+		resp.StatusCode = http.StatusFound
+	}
+	resp.Headers = make(map[string]string)
+	resp.Headers[httpx.KeyLocation] = location
+	return resp
+}
+
 func BuildContext(ctx context.Context, request *Request) context.Context {
 	appID := httpx.GetHeader(request.Headers, httpx.KeyAppID)
 	clientID := httpx.GetHeader(request.Headers, httpx.KeyClientID)
