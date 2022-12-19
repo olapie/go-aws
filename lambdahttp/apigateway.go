@@ -111,6 +111,22 @@ func HTML(status int, htmlText string) *Response {
 	return resp
 }
 
+func Text200OrError(text string, err error) *Response {
+	if err != nil {
+		return Error(err)
+	}
+	return Text(http.StatusOK, text)
+}
+
+func Text(status int, text string) *Response {
+	resp := new(events.APIGatewayV2HTTPResponse)
+	resp.StatusCode = status
+	resp.Headers = make(map[string]string)
+	resp.Headers[httpx.KeyContentType] = httpx.Plain
+	resp.Body = text
+	return resp
+}
+
 func Redirect(permanent bool, location string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	if permanent {

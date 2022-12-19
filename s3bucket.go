@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+
 	"code.olapie.com/sugar/errorx"
 	"code.olapie.com/sugar/mapping"
 	"code.olapie.com/sugar/slicing"
@@ -27,18 +29,21 @@ var _ error = s3ErrorNotFound
 type S3Bucket struct {
 	bucket             string
 	client             *s3.Client
+	presignClient      *s3.PresignClient
 	objExistsWaiter    *s3.ObjectExistsWaiter
 	objNotExistsWaiter *s3.ObjectNotExistsWaiter
+	ChecksumAlgorithm  types.ChecksumAlgorithm
 	ACL                types.ObjectCannedACL
 	CacheControl       string
 }
 
 func NewS3Bucket(bucket string, c *s3.Client) *S3Bucket {
 	s := &S3Bucket{
-		bucket:       bucket,
-		client:       c,
-		ACL:          types.ObjectCannedACLPrivate,
-		CacheControl: cacheControl,
+		bucket:        bucket,
+		client:        c,
+		presignClient: s3.NewPresignClient(c),
+		ACL:           types.ObjectCannedACLPrivate,
+		CacheControl:  cacheControl,
 	}
 	s.objExistsWaiter = s3.NewObjectExistsWaiter(s.client)
 	s.objNotExistsWaiter = s3.NewObjectNotExistsWaiter(s.client)
@@ -49,30 +54,38 @@ func NewS3BucketFromConfig(bucket string, cfg aws.Config, options ...func(*s3.Op
 	return NewS3Bucket(bucket, s3.NewFromConfig(cfg, options...))
 }
 
-func (s *S3Bucket) Put(ctx context.Context, id string, content []byte, metadata map[string]string) error {
+func (s *S3Bucket) Put(ctx context.Context, key string, content []byte, metadata map[string]string, optFns ...func(input *s3.PutObjectInput)) error {
 	input := &s3.PutObjectInput{
-		Bucket:       aws.String(s.bucket),
-		Key:          aws.String(id),
-		Body:         bytes.NewBuffer(content),
-		ACL:          s.ACL,
-		CacheControl: aws.String(s.CacheControl),
-		ContentType:  aws.String(http.DetectContentType(content)),
-		Metadata:     metadata,
+		Bucket:            aws.String(s.bucket),
+		Key:               aws.String(key),
+		Body:              bytes.NewBuffer(content),
+		ChecksumAlgorithm: s.ChecksumAlgorithm,
+		ACL:               s.ACL,
+		CacheControl:      aws.String(s.CacheControl),
+		ContentType:       aws.String(http.DetectContentType(content)),
+		Metadata:          metadata,
+	}
+	for _, fn := range optFns {
+		fn(input)
 	}
 	_, err := s.client.PutObject(ctx, input)
 	return err
 }
 
-func (s *S3Bucket) Get(ctx context.Context, id string) ([]byte, error) {
+func (s *S3Bucket) Get(ctx context.Context, key string, optFns ...func(input *s3.GetObjectInput)) ([]byte, error) {
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(id),
+		Key:    aws.String(key),
+	}
+
+	for _, fn := range optFns {
+		fn(input)
 	}
 
 	output, err := s.client.GetObject(ctx, input)
 	if err != nil {
 		if _, ok := errorx.CauseOf[*types.NoSuchKey](err); ok {
-			return nil, errorx.NotFound("object %s doesn't exist", id)
+			return nil, errorx.NotFound("object %s doesn't exist", key)
 		}
 		return nil, fmt.Errorf("s3.GetObject: %w", err)
 	}
@@ -86,8 +99,90 @@ func (s *S3Bucket) Get(ctx context.Context, id string) ([]byte, error) {
 	return content, nil
 }
 
-func (s *S3Bucket) Exists(ctx context.Context, id string) (bool, error) {
-	_, err := s.getHeadObject(ctx, id)
+func (s *S3Bucket) CreateMultipartUpload(ctx context.Context, key string, metadata map[string]string) (string, error) {
+	input := &s3.CreateMultipartUploadInput{
+		Bucket:            aws.String(s.bucket),
+		Key:               aws.String(key),
+		Metadata:          metadata,
+		ChecksumAlgorithm: s.ChecksumAlgorithm,
+		ACL:               s.ACL,
+		CacheControl:      aws.String(s.CacheControl),
+	}
+	output, err := s.client.CreateMultipartUpload(ctx, input)
+	if err != nil {
+		return "", err
+	}
+	return *output.UploadId, nil
+}
+
+func (s *S3Bucket) CompleteMultipartUpload(ctx context.Context, key, uploadID string, parts []int, optFns ...func(*s3.CompleteMultipartUploadInput)) (string, error) {
+	input := &s3.CompleteMultipartUploadInput{
+		Bucket:   aws.String(s.bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadID),
+		MultipartUpload: &types.CompletedMultipartUpload{
+			Parts: slicing.MustTransform(parts, func(a int) types.CompletedPart {
+				return types.CompletedPart{
+					PartNumber: int32(a),
+				}
+			}),
+		},
+	}
+	for _, fn := range optFns {
+		fn(input)
+	}
+	output, err := s.client.CompleteMultipartUpload(ctx, input)
+	if err != nil {
+		return "", err
+	}
+	return *output.ChecksumCRC32, nil
+}
+
+func (s *S3Bucket) AbortMultipartUpload(ctx context.Context, key, uploadID string) error {
+	input := &s3.AbortMultipartUploadInput{
+		Bucket:   aws.String(s.bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadID),
+	}
+	_, err := s.client.AbortMultipartUpload(ctx, input)
+	return err
+}
+
+func (s *S3Bucket) PreSignUploadPart(ctx context.Context, key, uploadID string, part int, ttl time.Duration) (*v4.PresignedHTTPRequest, error) {
+	input := &s3.UploadPartInput{
+		Bucket:            aws.String(s.bucket),
+		Key:               aws.String(key),
+		PartNumber:        int32(part),
+		UploadId:          aws.String(uploadID),
+		ChecksumAlgorithm: s.ChecksumAlgorithm,
+	}
+	return s.presignClient.PresignUploadPart(ctx, input, func(options *s3.PresignOptions) {
+		options.Expires = ttl
+	})
+}
+
+func (s *S3Bucket) PreSignGet(ctx context.Context, key string, ttl time.Duration) (*v4.PresignedHTTPRequest, error) {
+	input := &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	}
+	return s.presignClient.PresignGetObject(ctx, input, func(options *s3.PresignOptions) {
+		options.Expires = ttl
+	})
+}
+
+func (s *S3Bucket) PreSignPut(ctx context.Context, key string, ttl time.Duration) (*v4.PresignedHTTPRequest, error) {
+	input := &s3.PutObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	}
+	return s.presignClient.PresignPutObject(ctx, input, func(options *s3.PresignOptions) {
+		options.Expires = ttl
+	})
+}
+
+func (s *S3Bucket) Exists(ctx context.Context, key string) (bool, error) {
+	_, err := s.GetHeadObject(ctx, key)
 	switch {
 	case errorx.IsNotExist(err):
 		return false, nil
@@ -98,10 +193,10 @@ func (s *S3Bucket) Exists(ctx context.Context, id string) (bool, error) {
 	}
 }
 
-func (s *S3Bucket) Delete(ctx context.Context, id string) error {
+func (s *S3Bucket) Delete(ctx context.Context, key string) error {
 	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(id),
+		Key:    aws.String(key),
 	})
 
 	if err != nil {
@@ -110,7 +205,7 @@ func (s *S3Bucket) Delete(ctx context.Context, id string) error {
 
 	err = s.objNotExistsWaiter.Wait(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(id),
+		Key:    aws.String(key),
 	}, time.Second*5)
 	if err != nil {
 		return fmt.Errorf("s3.ObjectNotExistsWaiter.Wait: %w", err)
@@ -126,9 +221,9 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string) error {
 	input := &s3.DeleteObjectsInput{
 		Bucket: aws.String(s.bucket),
 		Delete: &types.Delete{
-			Objects: slicing.MustTransform(ids, func(id string) types.ObjectIdentifier {
+			Objects: slicing.MustTransform(ids, func(key string) types.ObjectIdentifier {
 				return types.ObjectIdentifier{
-					Key: aws.String(id),
+					Key: aws.String(key),
 				}
 			}),
 		},
@@ -163,24 +258,24 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string) error {
 	return nil
 }
 
-func (s *S3Bucket) GetMetadata(ctx context.Context, id string) (map[string]string, error) {
-	head, err := s.getHeadObject(ctx, id)
+func (s *S3Bucket) GetMetadata(ctx context.Context, key string) (map[string]string, error) {
+	head, err := s.GetHeadObject(ctx, key)
 	if err != nil {
 		return nil, err
 	}
 	return head.Metadata, nil
 }
 
-func (s *S3Bucket) getHeadObject(ctx context.Context, id string) (*s3.HeadObjectOutput, error) {
+func (s *S3Bucket) GetHeadObject(ctx context.Context, key string) (*s3.HeadObjectOutput, error) {
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(id),
+		Key:    aws.String(key),
 	}
 	output, err := s.client.HeadObject(ctx, input)
 	if err != nil {
 		if apiErr, ok := errorx.CauseOf[smithy.APIError](err); ok {
 			if apiErr.ErrorCode() == s3ErrorNotFound.ErrorCode() {
-				return nil, errorx.NotFound("id")
+				return nil, errorx.NotFound("key")
 			}
 		}
 		return nil, err

@@ -45,10 +45,23 @@ type Function = awslambda.Function
 type HttpLambdaIntegration = apigatewayv2integrationsalpha.HttpLambdaIntegration
 
 type Env struct {
-	Account string
-	Region  string
-	Service string
-	Stage   string
+	Account    string
+	Region     string
+	Service    string
+	Stage      string
+	HostedZone string
+}
+
+func (c *Env) BucketARN(name string) string {
+	return fmt.Sprintf("arn:aws:s3:::%s", name)
+}
+
+func (e *Env) CertificateARN(certificateID string) string {
+	return fmt.Sprintf("arn:aws:acm:%s:%s:certificate/%s", e.Region, e.Account, certificateID)
+}
+
+func (e *Env) DynamodbTableARN(tableName string) string {
+	return fmt.Sprintf("arn:aws:dynamodb:%s:%s:table/%s", e.Region, e.Account, tableName)
 }
 
 func (e *Env) GetFullName(baseName string) string {
@@ -125,13 +138,13 @@ func NewFunction(scope constructs.Construct, env *Env, name string, props *Funct
 }
 
 type HttpApiEndpoint struct {
-	FunctionName string
+	FunctionName string `json:"function_name"`
 	Function     Function
 
-	Path    string
-	Methods []HttpMethod
+	Path    string       `json:"path"`
+	Methods []HttpMethod `json:"methods"`
 
-	Default bool
+	Default bool `json:"default"`
 }
 
 func NewHttpApi(scope constructs.Construct, name string, domainName DomainName, endpoints []HttpApiEndpoint) HttpApi {
