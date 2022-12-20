@@ -165,6 +165,7 @@ func (s *S3Bucket) ListMultipartUploads(ctx context.Context, optFns ...func(*s3.
 	return output.Uploads, nil
 }
 
+// ListParts only works if upload is not completed or aborted
 func (s *S3Bucket) ListParts(ctx context.Context, key, uploadID string, optFns ...func(input *s3.ListPartsInput)) ([]types.Part, error) {
 	input := &s3.ListPartsInput{
 		Bucket:   aws.String(s.bucket),
@@ -222,23 +223,17 @@ func (s *S3Bucket) PreSignPut(ctx context.Context, key string, ttl time.Duration
 	})
 }
 
-func (s *S3Bucket) Exists(ctx context.Context, key string) (bool, error) {
-	_, err := s.GetHeadObject(ctx, key)
-	switch {
-	case errorx.IsNotExist(err):
-		return false, nil
-	case err != nil:
-		return false, err
-	default:
-		return true, nil
-	}
-}
-
-func (s *S3Bucket) Delete(ctx context.Context, key string) error {
-	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+func (s *S3Bucket) Delete(ctx context.Context, key string, optFns ...func(*s3.DeleteObjectInput)) error {
+	input := &s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(key),
-	})
+	}
+
+	_, err := s.client.DeleteObject(ctx, input)
+
+	for _, fn := range optFns {
+		fn(input)
+	}
 
 	if err != nil {
 		return fmt.Errorf("s3.DeleteObject: %w", err)
@@ -254,7 +249,7 @@ func (s *S3Bucket) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string) error {
+func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string, optFns ...func(*s3.DeleteObjectsInput)) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -268,6 +263,10 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string) error {
 				}
 			}),
 		},
+	}
+
+	for _, fn := range optFns {
+		fn(input)
 	}
 
 	output, err := s.client.DeleteObjects(ctx, input)
@@ -299,18 +298,13 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string) error {
 	return nil
 }
 
-func (s *S3Bucket) GetMetadata(ctx context.Context, key string) (map[string]string, error) {
-	head, err := s.GetHeadObject(ctx, key)
-	if err != nil {
-		return nil, err
-	}
-	return head.Metadata, nil
-}
-
-func (s *S3Bucket) GetHeadObject(ctx context.Context, key string) (*s3.HeadObjectOutput, error) {
+func (s *S3Bucket) GetHeadObject(ctx context.Context, key string, optFns ...func(*s3.HeadObjectInput)) (*s3.HeadObjectOutput, error) {
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(key),
+	}
+	for _, fn := range optFns {
+		fn(input)
 	}
 	output, err := s.client.HeadObject(ctx, input)
 	if err != nil {
