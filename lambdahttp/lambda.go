@@ -78,7 +78,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		}
 		return resp
 	}
-	return Error(errorx.NotFound("endpoint not found"))
+	return Error(errorx.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
 }
 
 func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {

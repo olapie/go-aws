@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"time"
 
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
-
 	"code.olapie.com/sugar/errorx"
 	"code.olapie.com/sugar/mapping"
+	"code.olapie.com/sugar/rtx"
 	"code.olapie.com/sugar/slicing"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awssigner "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
@@ -32,9 +32,9 @@ type S3Bucket struct {
 	presignClient      *s3.PresignClient
 	objExistsWaiter    *s3.ObjectExistsWaiter
 	objNotExistsWaiter *s3.ObjectNotExistsWaiter
-	ChecksumAlgorithm  types.ChecksumAlgorithm
-	ACL                types.ObjectCannedACL
-	CacheControl       string
+
+	ACL          types.ObjectCannedACL
+	CacheControl string
 }
 
 func NewS3Bucket(bucket string, c *s3.Client) *S3Bucket {
@@ -42,8 +42,9 @@ func NewS3Bucket(bucket string, c *s3.Client) *S3Bucket {
 		bucket:        bucket,
 		client:        c,
 		presignClient: s3.NewPresignClient(c),
-		ACL:           types.ObjectCannedACLPrivate,
-		CacheControl:  cacheControl,
+
+		ACL:          types.ObjectCannedACLPrivate,
+		CacheControl: cacheControl,
 	}
 	s.objExistsWaiter = s3.NewObjectExistsWaiter(s.client)
 	s.objNotExistsWaiter = s3.NewObjectNotExistsWaiter(s.client)
@@ -54,22 +55,24 @@ func NewS3BucketFromConfig(bucket string, cfg aws.Config, options ...func(*s3.Op
 	return NewS3Bucket(bucket, s3.NewFromConfig(cfg, options...))
 }
 
-func (s *S3Bucket) Put(ctx context.Context, key string, content []byte, metadata map[string]string, optFns ...func(input *s3.PutObjectInput)) error {
+func (s *S3Bucket) Put(ctx context.Context, key string, content []byte, metadata map[string]string, optFns ...func(input *s3.PutObjectInput)) (string, error) {
 	input := &s3.PutObjectInput{
-		Bucket:            aws.String(s.bucket),
-		Key:               aws.String(key),
-		Body:              bytes.NewBuffer(content),
-		ChecksumAlgorithm: s.ChecksumAlgorithm,
-		ACL:               s.ACL,
-		CacheControl:      aws.String(s.CacheControl),
-		ContentType:       aws.String(http.DetectContentType(content)),
-		Metadata:          metadata,
+		Bucket:       aws.String(s.bucket),
+		Key:          aws.String(key),
+		Body:         bytes.NewBuffer(content),
+		ACL:          s.ACL,
+		CacheControl: aws.String(s.CacheControl),
+		ContentType:  aws.String(http.DetectContentType(content)),
+		Metadata:     metadata,
 	}
 	for _, fn := range optFns {
 		fn(input)
 	}
-	_, err := s.client.PutObject(ctx, input)
-	return err
+	output, err := s.client.PutObject(ctx, input)
+	if err != nil {
+		return "", err
+	}
+	return rtx.Dereference(output.ETag), nil
 }
 
 func (s *S3Bucket) Get(ctx context.Context, key string, optFns ...func(input *s3.GetObjectInput)) ([]byte, error) {
@@ -99,14 +102,15 @@ func (s *S3Bucket) Get(ctx context.Context, key string, optFns ...func(input *s3
 	return content, nil
 }
 
-func (s *S3Bucket) CreateMultipartUpload(ctx context.Context, key string, metadata map[string]string) (string, error) {
+func (s *S3Bucket) CreateMultipartUpload(ctx context.Context, key string, optFns ...func(*s3.CreateMultipartUploadInput)) (string, error) {
 	input := &s3.CreateMultipartUploadInput{
-		Bucket:            aws.String(s.bucket),
-		Key:               aws.String(key),
-		Metadata:          metadata,
-		ChecksumAlgorithm: s.ChecksumAlgorithm,
-		ACL:               s.ACL,
-		CacheControl:      aws.String(s.CacheControl),
+		Bucket:       aws.String(s.bucket),
+		Key:          aws.String(key),
+		ACL:          s.ACL,
+		CacheControl: aws.String(s.CacheControl),
+	}
+	for _, fn := range optFns {
+		fn(input)
 	}
 	output, err := s.client.CreateMultipartUpload(ctx, input)
 	if err != nil {
@@ -115,17 +119,13 @@ func (s *S3Bucket) CreateMultipartUpload(ctx context.Context, key string, metada
 	return *output.UploadId, nil
 }
 
-func (s *S3Bucket) CompleteMultipartUpload(ctx context.Context, key, uploadID string, parts []int, optFns ...func(*s3.CompleteMultipartUploadInput)) (string, error) {
+func (s *S3Bucket) CompleteMultipartUpload(ctx context.Context, key, uploadID string, parts []types.CompletedPart, optFns ...func(*s3.CompleteMultipartUploadInput)) (string, error) {
 	input := &s3.CompleteMultipartUploadInput{
 		Bucket:   aws.String(s.bucket),
 		Key:      aws.String(key),
 		UploadId: aws.String(uploadID),
 		MultipartUpload: &types.CompletedMultipartUpload{
-			Parts: slicing.MustTransform(parts, func(a int) types.CompletedPart {
-				return types.CompletedPart{
-					PartNumber: int32(a),
-				}
-			}),
+			Parts: parts,
 		},
 	}
 	for _, fn := range optFns {
@@ -135,46 +135,87 @@ func (s *S3Bucket) CompleteMultipartUpload(ctx context.Context, key, uploadID st
 	if err != nil {
 		return "", err
 	}
-	return *output.ChecksumCRC32, nil
+	return rtx.Dereference(output.ETag), nil
 }
 
-func (s *S3Bucket) AbortMultipartUpload(ctx context.Context, key, uploadID string) error {
+func (s *S3Bucket) AbortMultipartUpload(ctx context.Context, key, uploadID string, optFns ...func(*s3.AbortMultipartUploadInput)) error {
 	input := &s3.AbortMultipartUploadInput{
 		Bucket:   aws.String(s.bucket),
 		Key:      aws.String(key),
 		UploadId: aws.String(uploadID),
 	}
+	for _, fn := range optFns {
+		fn(input)
+	}
 	_, err := s.client.AbortMultipartUpload(ctx, input)
 	return err
 }
 
-func (s *S3Bucket) PreSignUploadPart(ctx context.Context, key, uploadID string, part int, ttl time.Duration) (*v4.PresignedHTTPRequest, error) {
+func (s *S3Bucket) ListMultipartUploads(ctx context.Context, optFns ...func(*s3.ListMultipartUploadsInput)) ([]types.MultipartUpload, error) {
+	input := &s3.ListMultipartUploadsInput{
+		Bucket: aws.String(s.bucket),
+	}
+	for _, fn := range optFns {
+		fn(input)
+	}
+	output, err := s.client.ListMultipartUploads(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+	return output.Uploads, nil
+}
+
+func (s *S3Bucket) ListParts(ctx context.Context, key, uploadID string, optFns ...func(input *s3.ListPartsInput)) ([]types.Part, error) {
+	input := &s3.ListPartsInput{
+		Bucket:   aws.String(s.bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadID),
+	}
+	for _, fn := range optFns {
+		fn(input)
+	}
+	output, err := s.client.ListParts(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+	return output.Parts, nil
+}
+
+func (s *S3Bucket) PreSignUploadPart(ctx context.Context, key, uploadID string, part int, ttl time.Duration, optFns ...func(*s3.UploadPartInput)) (*awssigner.PresignedHTTPRequest, error) {
 	input := &s3.UploadPartInput{
-		Bucket:            aws.String(s.bucket),
-		Key:               aws.String(key),
-		PartNumber:        int32(part),
-		UploadId:          aws.String(uploadID),
-		ChecksumAlgorithm: s.ChecksumAlgorithm,
+		Bucket:     aws.String(s.bucket),
+		Key:        aws.String(key),
+		PartNumber: int32(part),
+		UploadId:   aws.String(uploadID),
+	}
+	for _, fn := range optFns {
+		fn(input)
 	}
 	return s.presignClient.PresignUploadPart(ctx, input, func(options *s3.PresignOptions) {
 		options.Expires = ttl
 	})
 }
 
-func (s *S3Bucket) PreSignGet(ctx context.Context, key string, ttl time.Duration) (*v4.PresignedHTTPRequest, error) {
+func (s *S3Bucket) PreSignGet(ctx context.Context, key string, ttl time.Duration, optFns ...func(*s3.GetObjectInput)) (*awssigner.PresignedHTTPRequest, error) {
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(key),
+	}
+	for _, fn := range optFns {
+		fn(input)
 	}
 	return s.presignClient.PresignGetObject(ctx, input, func(options *s3.PresignOptions) {
 		options.Expires = ttl
 	})
 }
 
-func (s *S3Bucket) PreSignPut(ctx context.Context, key string, ttl time.Duration) (*v4.PresignedHTTPRequest, error) {
+func (s *S3Bucket) PreSignPut(ctx context.Context, key string, ttl time.Duration, optFns ...func(*s3.PutObjectInput)) (*awssigner.PresignedHTTPRequest, error) {
 	input := &s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(key),
+	}
+	for _, fn := range optFns {
+		fn(input)
 	}
 	return s.presignClient.PresignPutObject(ctx, input, func(options *s3.PresignOptions) {
 		options.Expires = ttl
