@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"code.olapie.com/awskit"
-	"code.olapie.com/sugar/errorx"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +26,7 @@ func TestS3_NotFound(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, exists)
 	_, err = bucket.Get(ctx, id)
-	require.EqualError(t, err, errorx.NotFound("object %s doesn't exist", id).Error())
+	require.EqualError(t, err, xerror.NotFound("object %s doesn't exist", id).Error())
 	err = bucket.Delete(ctx, id)
 	require.NoError(t, err)
 	err = bucket.BatchDelete(ctx, []string{id})

@@ -1,14 +1,14 @@
 package lambdahttp
 
 import (
+	"code.olapie.com/sugar/v2/xcontext"
+	"code.olapie.com/sugar/v2/xerror"
+	"code.olapie.com/sugar/v2/xhttp"
+	"code.olapie.com/sugar/v2/xjson"
 	"context"
 	"net/http"
 
 	"code.olapie.com/log"
-	"code.olapie.com/sugar/ctxutil"
-	"code.olapie.com/sugar/errorx"
-	"code.olapie.com/sugar/httpx"
-	"code.olapie.com/sugar/jsonx"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
 )
@@ -18,12 +18,12 @@ func Error(err error) *Response {
 		return OK()
 	}
 
-	if er, ok := err.(*errorx.Error); ok {
+	if er, ok := err.(*xerror.Error); ok {
 		return JSON(er.Code, er)
 	}
 
-	var er errorx.Error
-	er.Code = errorx.GetCode(err)
+	var er xerror.Error
+	er.Code = xerror.GetCode(err)
 	if er.Code == 0 {
 		er.Code = http.StatusInternalServerError
 	}
@@ -38,7 +38,7 @@ func OK() *Response {
 func Status(s int) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.Plain
+	resp.Headers[xhttp.KeyContentType] = xhttp.Plain
 	resp.StatusCode = s
 	resp.Body = http.StatusText(s)
 	return resp
@@ -73,8 +73,8 @@ func JSON(status int, v any) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.JSON
-	resp.Body = jsonx.ToString(v)
+	resp.Headers[xhttp.KeyContentType] = xhttp.JSON
+	resp.Body = xjson.ToString(v)
 	return resp
 }
 
@@ -86,7 +86,7 @@ func CSS(status int, cssText string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.CSS
+	resp.Headers[xhttp.KeyContentType] = xhttp.CSS
 	resp.Body = cssText
 	return resp
 }
@@ -106,7 +106,7 @@ func HTML(status int, htmlText string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.HtmlUTF8
+	resp.Headers[xhttp.KeyContentType] = xhttp.HtmlUTF8
 	resp.Body = htmlText
 	return resp
 }
@@ -122,7 +122,7 @@ func Text(status int, text string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.Plain
+	resp.Headers[xhttp.KeyContentType] = xhttp.Plain
 	resp.Body = text
 	return resp
 }
@@ -135,20 +135,20 @@ func Redirect(permanent bool, location string) *Response {
 		resp.StatusCode = http.StatusFound
 	}
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyLocation] = location
+	resp.Headers[xhttp.KeyLocation] = location
 	return resp
 }
 
 func BuildContext(ctx context.Context, request *Request) context.Context {
-	appID := httpx.GetHeader(request.Headers, httpx.KeyAppID)
-	clientID := httpx.GetHeader(request.Headers, httpx.KeyClientID)
-	traceID := httpx.GetHeader(request.Headers, httpx.KeyTraceID)
+	appID := xhttp.GetHeader(request.Headers, xhttp.KeyAppID)
+	clientID := xhttp.GetHeader(request.Headers, xhttp.KeyClientID)
+	traceID := xhttp.GetHeader(request.Headers, xhttp.KeyTraceID)
 	if traceID == "" {
 		traceID = uuid.NewString()
 	}
-	ctx = ctxutil.WithAppID(ctx, appID)
-	ctx = ctxutil.WithClientID(ctx, clientID)
-	ctx = ctxutil.WithTraceID(ctx, traceID)
+	ctx = xcontext.WithAppID(ctx, appID)
+	ctx = xcontext.WithClientID(ctx, clientID)
+	ctx = xcontext.WithTraceID(ctx, traceID)
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
 	ctx = log.BuildContext(ctx, logger)
 	return ctx

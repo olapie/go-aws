@@ -1,13 +1,13 @@
 package ddb
 
 import (
+	"code.olapie.com/sugar/v2/xerror"
+	"code.olapie.com/sugar/v2/xruntime"
+	"code.olapie.com/sugar/v2/xslice"
 	"context"
 	"fmt"
 	"reflect"
 
-	"code.olapie.com/sugar/errorx"
-	"code.olapie.com/sugar/rtx"
-	"code.olapie.com/sugar/slicing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
@@ -53,7 +53,7 @@ func NewTable[E any, P PartitionKeyConstraint, S SortKeyConstraint](
 	}
 
 	var elem E
-	attrs, err := attributevalue.MarshalMap(rtx.DeepNew(reflect.TypeOf(elem)).Elem().Interface())
+	attrs, err := attributevalue.MarshalMap(xruntime.DeepNew(reflect.TypeOf(elem)).Elem().Interface())
 	if err != nil {
 		panic(err)
 	}
@@ -80,7 +80,7 @@ func (t *Table[E, P, S]) Put(ctx context.Context, item E) error {
 }
 
 func (t *Table[E, P, S]) BatchPut(ctx context.Context, items []E) error {
-	requests, err := slicing.Transform(items, func(item E) (types.WriteRequest, error) {
+	requests, err := xslice.Transform(items, func(item E) (types.WriteRequest, error) {
 		var req types.WriteRequest
 		attrs, err := attributevalue.MarshalMap(item)
 		if err != nil {
@@ -98,7 +98,7 @@ func (t *Table[E, P, S]) BatchPut(ctx context.Context, items []E) error {
 		t.tableName: requests,
 	}}
 	_, err = t.client.BatchWriteItem(ctx, input)
-	return errorx.Wrapf(err, "dynamodb.BatchWriteItem")
+	return xerror.Wrapf(err, "dynamodb.BatchWriteItem")
 }
 
 func (t *Table[E, P, S]) BatchGet(ctx context.Context, partitionKeys []P, sortKeys []S) ([]E, error) {
@@ -146,7 +146,7 @@ func (t *Table[E, P, S]) Get(ctx context.Context, partitionKey P, sortKey S) (E,
 	}
 
 	if output.Item == nil {
-		return item, errorx.NotExist
+		return item, xerror.NotExist
 	}
 
 	err = attributevalue.UnmarshalMap(output.Item, &item)
@@ -274,7 +274,7 @@ func (t *Table[E, P, S]) QueryFirstOne(ctx context.Context, partition P, sortKey
 		return item, err
 	}
 	if len(items) == 0 {
-		return item, errorx.NotExist
+		return item, xerror.NotExist
 	}
 	return items[0], nil
 }
@@ -287,7 +287,7 @@ func (t *Table[E, P, S]) QueryLastOne(ctx context.Context, partition P, sortKey 
 		return item, err
 	}
 	if len(items) == 0 {
-		return item, errorx.NotExist
+		return item, xerror.NotExist
 	}
 	return items[0], nil
 }
@@ -298,7 +298,7 @@ func (t *Table[E, P, S]) createQueryInput(partition P, sortKey *S, limit int32) 
 		sortKeyCond := expression.Key(t.pkDefinition.sortKeyName).Equal(expression.Value(*sortKey))
 		keyCond = keyCond.And(sortKeyCond)
 	}
-	cols := slicing.MustTransform(t.columns, expression.Name)
+	cols := xslice.MustTransform(t.columns, expression.Name)
 	proj := expression.NamesList(cols[0], cols[1:]...)
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCond).WithProjection(proj).Build()
 	if err != nil {
@@ -319,7 +319,7 @@ func (t *Table[E, P, S]) createQueryInput(partition P, sortKey *S, limit int32) 
 }
 
 func (t *Table[E, P, S]) batchDelete(ctx context.Context, pks []*PrimaryKey[P, S]) error {
-	requests := slicing.MustTransform(pks, func(pk *PrimaryKey[P, S]) types.WriteRequest {
+	requests := xslice.MustTransform(pks, func(pk *PrimaryKey[P, S]) types.WriteRequest {
 		return types.WriteRequest{
 			DeleteRequest: &types.DeleteRequest{
 				Key: pk.AttributeValue(),
@@ -346,7 +346,7 @@ func (t *Table[E, P, S]) put(ctx context.Context, item E, conditionExpression *s
 		ConditionExpression:    conditionExpression,
 	}
 	_, err = t.client.PutItem(ctx, input)
-	return errorx.Wrapf(err, "dynamodb.PutItem")
+	return xerror.Wrapf(err, "dynamodb.PutItem")
 }
 
 func (t *Table[E, P, S]) prepareTransactPut(ctx context.Context, puts []E, conditionExpression *string) ([]types.TransactWriteItem, error) {

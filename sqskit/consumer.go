@@ -1,14 +1,14 @@
 package sqskit
 
 import (
+	"code.olapie.com/sugar/v2/xcontext"
+	"code.olapie.com/sugar/v2/xhttp"
 	"context"
 	"errors"
 	"fmt"
 	"time"
 
 	"code.olapie.com/log"
-	"code.olapie.com/sugar/ctxutil"
-	"code.olapie.com/sugar/httpx"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -160,12 +160,12 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		}
 
 		var traceID string
-		if attr, ok := msg.MessageAttributes[httpx.KeyTraceID]; ok && attr.StringValue != nil {
+		if attr, ok := msg.MessageAttributes[xhttp.KeyTraceID]; ok && attr.StringValue != nil {
 			traceID = *(attr.StringValue)
 		} else {
 			traceID = uuid.NewString()
 		}
-		ctx = ctxutil.WithTraceID(ctx, traceID)
+		ctx = xcontext.WithTraceID(ctx, traceID)
 		msgLogger := logger.With(log.String("trace_id", traceID))
 		msgLogger.Info("START", log.String("message_id", msgID))
 

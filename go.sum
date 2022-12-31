@@ -1,11 +1,9 @@
 code.olapie.com/log v1.0.2 h1:XeP770ZXS7+pdCBsVjqPfK13mWtLbwBoEhKPPQoNBjw=
 code.olapie.com/log v1.0.2/go.mod h1:5pzYPLljJAQgq0RGe1V5C0L5Y9LQdz4BwwGVXk+HwIc=
-code.olapie.com/router v1.0.3 h1:INLBJfVBYnhEG4hHYTWqGmf0Bo6P1taT+oPd2DUD6lI=
-code.olapie.com/router v1.0.3/go.mod h1:Lv0/EviRanbomI8OrAvC0XM4AFchucl3yJxfR8T0M3U=
-code.olapie.com/sugar v1.5.7 h1:EuB2RQMDlC3c9lmTvKJfp1wQAq5fNSmRPdNH/BfGurc=
-code.olapie.com/sugar v1.5.7/go.mod h1:kB2NS/g7qMk8Qi7KifGKomGwMC+qPVV0Cm5pOJGkFJI=
-code.olapie.com/sugar v1.5.12 h1:17ilcGicnh8nPHiJIMfZ9pwQENPHlIwfghbUbsMjUs4=
-code.olapie.com/sugar v1.5.12/go.mod h1:kB2NS/g7qMk8Qi7KifGKomGwMC+qPVV0Cm5pOJGkFJI=
+code.olapie.com/router v1.0.4 h1:o0iQBJ7IbBI+2dY8URBCgb7mwP9rrQG8AsvqwlE6htk=
+code.olapie.com/router v1.0.4/go.mod h1:L/DT71WJCySY9FZRcail/S9PIKNqIcHyThFGJR8nsLg=
+code.olapie.com/sugar/v2 v2.0.2 h1:iL+DR4gyaw0kf6ZOiH05Ar/+UwMWN90c5gQ1QJhg6Jc=
+code.olapie.com/sugar/v2 v2.0.2/go.mod h1:KO/93YDdhgIQH3Oypd9u1pmSBrpAyeeSp3Yqo6iEDnA=
 github.com/BurntSushi/toml v1.2.0 h1:Rt8g24XnyGTyglgET/PRUNlrUeu9F5L+7FilkXfZgs0=
 github.com/aws/aws-lambda-go v1.35.0 h1:iocVDy5Cw5SCRrKOPHwarkdFwwy48OkfmHoE6SJ3ATg=
 github.com/aws/aws-lambda-go v1.35.0/go.mod h1:jwFe2KmMsHmffA1X2R09hH6lFzJQxzI8qK17ewzbQMM=

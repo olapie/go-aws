@@ -2,16 +2,16 @@ package awskit
 
 import (
 	"bytes"
+	"code.olapie.com/sugar/v2/xerror"
+	"code.olapie.com/sugar/v2/xmap"
+	"code.olapie.com/sugar/v2/xruntime"
+	"code.olapie.com/sugar/v2/xslice"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
-	"code.olapie.com/sugar/errorx"
-	"code.olapie.com/sugar/mapping"
-	"code.olapie.com/sugar/rtx"
-	"code.olapie.com/sugar/slicing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssigner "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -72,7 +72,7 @@ func (s *S3Bucket) Put(ctx context.Context, key string, content []byte, metadata
 	if err != nil {
 		return "", err
 	}
-	return rtx.Dereference(output.ETag), nil
+	return xruntime.Dereference(output.ETag), nil
 }
 
 func (s *S3Bucket) Get(ctx context.Context, key string, optFns ...func(input *s3.GetObjectInput)) ([]byte, error) {
@@ -87,8 +87,8 @@ func (s *S3Bucket) Get(ctx context.Context, key string, optFns ...func(input *s3
 
 	output, err := s.client.GetObject(ctx, input)
 	if err != nil {
-		if _, ok := errorx.CauseOf[*types.NoSuchKey](err); ok {
-			return nil, errorx.NotFound("object %s doesn't exist", key)
+		if _, ok := xerror.CauseOf[*types.NoSuchKey](err); ok {
+			return nil, xerror.NotFound("object %s doesn't exist", key)
 		}
 		return nil, fmt.Errorf("s3.GetObject: %w", err)
 	}
@@ -135,7 +135,7 @@ func (s *S3Bucket) CompleteMultipartUpload(ctx context.Context, key, uploadID st
 	if err != nil {
 		return "", err
 	}
-	return rtx.Dereference(output.ETag), nil
+	return xruntime.Dereference(output.ETag), nil
 }
 
 func (s *S3Bucket) AbortMultipartUpload(ctx context.Context, key, uploadID string, optFns ...func(*s3.AbortMultipartUploadInput)) error {
@@ -257,7 +257,7 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string, optFns ...func
 	input := &s3.DeleteObjectsInput{
 		Bucket: aws.String(s.bucket),
 		Delete: &types.Delete{
-			Objects: slicing.MustTransform(ids, func(key string) types.ObjectIdentifier {
+			Objects: xslice.MustTransform(ids, func(key string) types.ObjectIdentifier {
 				return types.ObjectIdentifier{
 					Key: aws.String(key),
 				}
@@ -279,12 +279,12 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string, optFns ...func
 	}
 
 	if len(output.Deleted) != len(ids) {
-		idSet := slicing.MustToSet[string, string](ids, nil)
+		idSet := xslice.MustToSet[string, string](ids, nil)
 		for _, del := range output.Deleted {
 			delete(idSet, *del.Key)
 		}
 		if len(idSet) != 0 {
-			return fmt.Errorf("some ids cannot be deleted: %v", mapping.GetKeys(idSet))
+			return fmt.Errorf("some ids cannot be deleted: %v", xmap.GetKeys(idSet))
 		}
 	}
 
@@ -308,9 +308,9 @@ func (s *S3Bucket) GetHeadObject(ctx context.Context, key string, optFns ...func
 	}
 	output, err := s.client.HeadObject(ctx, input)
 	if err != nil {
-		if apiErr, ok := errorx.CauseOf[smithy.APIError](err); ok {
+		if apiErr, ok := xerror.CauseOf[smithy.APIError](err); ok {
 			if apiErr.ErrorCode() == s3ErrorNotFound.ErrorCode() {
-				return nil, errorx.NotFound("key")
+				return nil, xerror.NotFound("key")
 			}
 		}
 		return nil, err

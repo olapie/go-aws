@@ -1,13 +1,13 @@
 package sqskit
 
 import (
+	"code.olapie.com/sugar/v2/xcontext"
+	"code.olapie.com/sugar/v2/xhttp"
 	"context"
 	"fmt"
 
 	"code.olapie.com/log"
-	"code.olapie.com/sugar/ctxutil"
-	"code.olapie.com/sugar/httpx"
-	"code.olapie.com/sugar/must"
+	"code.olapie.com/sugar/v2/must"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -16,26 +16,26 @@ import (
 
 func BuildMessageAttributesFromContext(ctx context.Context) map[string]types.MessageAttributeValue {
 	attrs := make(map[string]types.MessageAttributeValue)
-	if traceID := ctxutil.GetTraceID(ctx); traceID != "" {
+	if traceID := xcontext.GetTraceID(ctx); traceID != "" {
 		attr := types.MessageAttributeValue{
 			DataType:    aws.String("String"),
 			StringValue: aws.String(traceID),
 		}
-		attrs[httpx.KeyTraceID] = attr
+		attrs[xhttp.KeyTraceID] = attr
 	}
 
-	if login := ctxutil.GetLogin[int64](ctx); login != 0 {
+	if login := xcontext.GetLogin[int64](ctx); login != 0 {
 		attr := types.MessageAttributeValue{
 			DataType:    aws.String("Number"),
 			StringValue: aws.String(fmt.Sprint(login)),
 		}
-		attrs[httpx.KeyUserID] = attr
-	} else if login := ctxutil.GetLogin[string](ctx); login != "" {
+		attrs[xhttp.KeyUserID] = attr
+	} else if login := xcontext.GetLogin[string](ctx); login != "" {
 		attr := types.MessageAttributeValue{
 			DataType:    aws.String("String"),
 			StringValue: aws.String(login),
 		}
-		attrs[httpx.KeyUserID] = attr
+		attrs[xhttp.KeyUserID] = attr
 	}
 
 	return attrs
@@ -44,16 +44,16 @@ func BuildMessageAttributesFromContext(ctx context.Context) map[string]types.Mes
 func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]events.SQSMessageAttribute) context.Context {
 	var traceID string
 	if len(attrs) != 0 {
-		if attr, ok := attrs[httpx.KeyTraceID]; ok && attr.StringValue != nil {
+		if attr, ok := attrs[xhttp.KeyTraceID]; ok && attr.StringValue != nil {
 			traceID = *attr.StringValue
-			ctx = ctxutil.WithTraceID(ctx, *attr.StringValue)
+			ctx = xcontext.WithTraceID(ctx, *attr.StringValue)
 		}
 
-		if attr, ok := attrs[httpx.KeyUserID]; ok && attr.StringValue != nil {
+		if attr, ok := attrs[xhttp.KeyUserID]; ok && attr.StringValue != nil {
 			if attr.DataType == "String" {
-				ctx = ctxutil.WithLogin(ctx, *attr.StringValue)
+				ctx = xcontext.WithLogin(ctx, *attr.StringValue)
 			} else {
-				ctx = ctxutil.WithLogin(ctx, must.ToInt64(*attr.StringValue))
+				ctx = xcontext.WithLogin(ctx, must.ToInt64(*attr.StringValue))
 			}
 		}
 	}
@@ -63,7 +63,7 @@ func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]eve
 	}
 
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
-	ctx = ctxutil.WithTraceID(ctx, traceID)
+	ctx = xcontext.WithTraceID(ctx, traceID)
 	ctx = log.BuildContext(ctx, logger)
 	return ctx
 }
