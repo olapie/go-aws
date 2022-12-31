@@ -1,11 +1,9 @@
 package cdk
 
 import (
+	"code.olapie.com/sugar/v2/xname"
+	"code.olapie.com/sugar/v2/xruntime"
 	"fmt"
-	"strings"
-
-	"code.olapie.com/sugar/naming"
-	"code.olapie.com/sugar/rtx"
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
@@ -18,6 +16,7 @@ import (
 	apigatewayv2alpha "github.com/aws/aws-cdk-go/awscdkapigatewayv2alpha/v2"
 	apigatewayv2integrationsalpha "github.com/aws/aws-cdk-go/awscdkapigatewayv2integrationsalpha/v2"
 	"github.com/aws/constructs-go/constructs/v10"
+	"strings"
 )
 
 const (
@@ -69,7 +68,7 @@ func (e *Env) GetFullName(baseName string) string {
 }
 
 func (e *Env) GetResourceName(typ, baseName string) string {
-	return naming.ToClassName(e.GetFullName(baseName)) + typ
+	return xname.ToClassName(e.GetFullName(baseName)) + typ
 }
 
 type DomainConfig struct {
@@ -81,20 +80,20 @@ type FunctionProps = awslambda.FunctionProps
 
 func NewARecord(scope constructs.Construct, hostedZone string, certificateArn, subDomain string) (ARecord, DomainName) {
 	domainName := newDomainName(scope, hostedZone, certificateArn, subDomain)
-	zoneCDKName := naming.ToClassName(hostedZone) + naming.ToClassName(subDomain) + "Zone"
-	zone := awsroute53.HostedZone_FromLookup(scope, rtx.Addr(zoneCDKName), &awsroute53.HostedZoneProviderProps{
-		DomainName: rtx.Addr(hostedZone),
+	zoneCDKName := xname.ToClassName(hostedZone) + xname.ToClassName(subDomain) + "Zone"
+	zone := awsroute53.HostedZone_FromLookup(scope, xruntime.Addr(zoneCDKName), &awsroute53.HostedZoneProviderProps{
+		DomainName: xruntime.Addr(hostedZone),
 	})
 
 	domainProperties := awsroute53targets.NewApiGatewayv2DomainProperties(
 		domainName.RegionalDomainName(),
 		domainName.RegionalHostedZoneId())
 
-	record := awsroute53.NewARecord(scope, rtx.Addr(naming.ToClassName(subDomain)+"ARecord"), &awsroute53.ARecordProps{
+	record := awsroute53.NewARecord(scope, xruntime.Addr(xname.ToClassName(subDomain)+"ARecord"), &awsroute53.ARecordProps{
 		Zone:           zone,
 		Comment:        nil,
-		DeleteExisting: rtx.Addr(true),
-		RecordName:     rtx.Addr(subDomain + "." + hostedZone),
+		DeleteExisting: xruntime.Addr(true),
+		RecordName:     xruntime.Addr(subDomain + "." + hostedZone),
 		Ttl:            nil,
 		Target:         awsroute53.RecordTarget_FromAlias(domainProperties),
 	})
@@ -104,13 +103,13 @@ func NewARecord(scope constructs.Construct, hostedZone string, certificateArn, s
 func NewFunction(scope constructs.Construct, env *Env, name string, props *FunctionProps) awslambda.Function {
 	funcName := env.GetFullName(name)
 	handlerName := env.Service + "-" + name
-	cdkName := naming.ToClassName(funcName) + "LambdaFunction"
+	cdkName := xname.ToClassName(funcName) + "LambdaFunction"
 	if props == nil {
 		props = &FunctionProps{}
 	}
 
 	if props.FunctionName == nil {
-		props.FunctionName = rtx.Addr(funcName)
+		props.FunctionName = xruntime.Addr(funcName)
 	}
 
 	if props.LogRetention == "" {
@@ -118,15 +117,15 @@ func NewFunction(scope constructs.Construct, env *Env, name string, props *Funct
 	}
 
 	if props.MemorySize == nil {
-		props.MemorySize = rtx.Addr(400.0)
+		props.MemorySize = xruntime.Addr(400.0)
 	}
 
 	if props.Timeout == nil {
-		props.Timeout = awscdk.Duration_Seconds(rtx.Addr(30.0))
+		props.Timeout = awscdk.Duration_Seconds(xruntime.Addr(30.0))
 	}
 
 	if props.Handler == nil {
-		props.Handler = rtx.Addr(handlerName)
+		props.Handler = xruntime.Addr(handlerName)
 	}
 
 	if props.Role == nil {
@@ -134,7 +133,7 @@ func NewFunction(scope constructs.Construct, env *Env, name string, props *Funct
 	}
 
 	props.Runtime = awslambda.Runtime_GO_1_X()
-	return awslambda.NewFunction(scope, rtx.Addr(cdkName), props)
+	return awslambda.NewFunction(scope, xruntime.Addr(cdkName), props)
 }
 
 type HttpApiEndpoint struct {
@@ -148,14 +147,14 @@ type HttpApiEndpoint struct {
 }
 
 func NewHttpApi(scope constructs.Construct, name string, domainName DomainName, endpoints []HttpApiEndpoint) HttpApi {
-	cdkName := naming.ToClassName(name)
+	cdkName := xname.ToClassName(name)
 	var routes []*apigatewayv2alpha.AddRoutesOptions
 	funcToIntegration := make(map[Function]HttpLambdaIntegration)
 	var defaultIntegration HttpLambdaIntegration
 	for _, e := range endpoints {
 		integration := funcToIntegration[e.Function]
 		if integration == nil {
-			integration = apigatewayv2integrationsalpha.NewHttpLambdaIntegration(rtx.Addr(
+			integration = apigatewayv2integrationsalpha.NewHttpLambdaIntegration(xruntime.Addr(
 				e.FunctionName+cdkName+"HttpLambdaIntegration"),
 				e.Function,
 				&apigatewayv2integrationsalpha.HttpLambdaIntegrationProps{})
@@ -168,13 +167,13 @@ func NewHttpApi(scope constructs.Construct, name string, domainName DomainName, 
 		}
 		routes = append(routes, &apigatewayv2alpha.AddRoutesOptions{
 			Integration: integration,
-			Path:        rtx.Addr(e.Path),
-			Methods:     rtx.Addr(e.Methods),
+			Path:        xruntime.Addr(e.Path),
+			Methods:     xruntime.Addr(e.Methods),
 		})
 	}
 
-	httpApi := apigatewayv2alpha.NewHttpApi(scope, rtx.Addr(cdkName+"HttpApi"), &apigatewayv2alpha.HttpApiProps{
-		ApiName: rtx.Addr(name),
+	httpApi := apigatewayv2alpha.NewHttpApi(scope, xruntime.Addr(cdkName+"HttpApi"), &apigatewayv2alpha.HttpApiProps{
+		ApiName: xruntime.Addr(name),
 		DefaultDomainMapping: &apigatewayv2alpha.DomainMappingOptions{
 			DomainName: domainName,
 		},
@@ -189,78 +188,78 @@ func NewHttpApi(scope constructs.Construct, name string, domainName DomainName, 
 
 func NewQueue(scope constructs.Construct, env *Env, name string, props *QueueProps) Queue {
 	name = env.GetFullName(name)
-	cdkName := naming.ToClassName(name)
+	cdkName := xname.ToClassName(name)
 	if props == nil {
 		props = new(QueueProps)
 	}
 	if props.MaxMessageSizeBytes == nil {
-		props.MaxMessageSizeBytes = rtx.Addr(float64(64 * 1024))
+		props.MaxMessageSizeBytes = xruntime.Addr(float64(64 * 1024))
 	}
 	if props.QueueName == nil {
-		props.QueueName = rtx.Addr(name)
+		props.QueueName = xruntime.Addr(name)
 	}
 	if props.RetentionPeriod == nil {
-		props.RetentionPeriod = awscdk.Duration_Hours(rtx.Addr(2.0))
+		props.RetentionPeriod = awscdk.Duration_Hours(xruntime.Addr(2.0))
 	}
 
 	if props.VisibilityTimeout == nil {
-		props.VisibilityTimeout = awscdk.Duration_Seconds(rtx.Addr(30.0))
+		props.VisibilityTimeout = awscdk.Duration_Seconds(xruntime.Addr(30.0))
 	}
 
-	dlq := awssqs.NewQueue(scope, rtx.Addr(cdkName+"DeadLetterQueue"), &QueueProps{
+	dlq := awssqs.NewQueue(scope, xruntime.Addr(cdkName+"DeadLetterQueue"), &QueueProps{
 		MaxMessageSizeBytes:    props.MaxMessageSizeBytes,
-		QueueName:              rtx.Addr(*props.QueueName + "-dlq"),
+		QueueName:              xruntime.Addr(*props.QueueName + "-dlq"),
 		ReceiveMessageWaitTime: nil,
-		RetentionPeriod:        awscdk.Duration_Days(rtx.Addr(3.0)),
+		RetentionPeriod:        awscdk.Duration_Days(xruntime.Addr(3.0)),
 		VisibilityTimeout:      props.VisibilityTimeout,
 	})
 	props.DeadLetterQueue = &awssqs.DeadLetterQueue{
-		MaxReceiveCount: rtx.Addr(3.0),
+		MaxReceiveCount: xruntime.Addr(3.0),
 		Queue:           dlq,
 	}
-	return awssqs.NewQueue(scope, rtx.Addr(cdkName+"Queue"), props)
+	return awssqs.NewQueue(scope, xruntime.Addr(cdkName+"Queue"), props)
 }
 
 func NewBucket(scope constructs.Construct, name string) Bucket {
-	cdkName := naming.ToClassName(name) + "Bucket"
-	return awss3.NewBucket(scope, rtx.Addr(cdkName), &awss3.BucketProps{
-		AutoDeleteObjects: rtx.Addr(false),
-		BucketName:        rtx.Addr(name),
-		Versioned:         rtx.Addr(true),
+	cdkName := xname.ToClassName(name) + "Bucket"
+	return awss3.NewBucket(scope, xruntime.Addr(cdkName), &awss3.BucketProps{
+		AutoDeleteObjects: xruntime.Addr(false),
+		BucketName:        xruntime.Addr(name),
+		Versioned:         xruntime.Addr(true),
 		RemovalPolicy:     awscdk.RemovalPolicy_RETAIN,
 	})
 }
 
 func newFunctionRole(scope constructs.Construct, env *Env, funcFullName string) awsiam.Role {
-	cdkName := naming.ToClassName(funcFullName) + "Role"
-	role := awsiam.NewRole(scope, rtx.Addr(cdkName), &awsiam.RoleProps{
-		RoleName:  rtx.Addr(cdkName),
-		AssumedBy: awsiam.NewServicePrincipal(rtx.Addr(IAMServiceLambda), nil),
+	cdkName := xname.ToClassName(funcFullName) + "Role"
+	role := awsiam.NewRole(scope, xruntime.Addr(cdkName), &awsiam.RoleProps{
+		RoleName:  xruntime.Addr(cdkName),
+		AssumedBy: awsiam.NewServicePrincipal(xruntime.Addr(IAMServiceLambda), nil),
 	})
 	role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-		Actions: rtx.Addr([]*string{rtx.Addr(IAMActionCreateLogStream), rtx.Addr(IAMActionPutLogEvents)}),
+		Actions: xruntime.Addr([]*string{xruntime.Addr(IAMActionCreateLogStream), xruntime.Addr(IAMActionPutLogEvents)}),
 		Effect:  awsiam.Effect_ALLOW,
-		Resources: rtx.Addr([]*string{rtx.Addr(fmt.Sprintf("arn:aws:logs:%s:%s:log-group:/aws/lambda/%s:*",
+		Resources: xruntime.Addr([]*string{xruntime.Addr(fmt.Sprintf("arn:aws:logs:%s:%s:log-group:/aws/lambda/%s:*",
 			env.Region, env.Account, funcFullName))}),
 	}))
 
 	role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-		Actions:   rtx.Addr([]*string{rtx.Addr(IAMActionCreateLogGroup)}),
+		Actions:   xruntime.Addr([]*string{xruntime.Addr(IAMActionCreateLogGroup)}),
 		Effect:    awsiam.Effect_ALLOW,
-		Resources: rtx.Addr([]*string{rtx.Addr(fmt.Sprintf("arn:aws:logs:%s:%s:*", env.Region, env.Account))}),
+		Resources: xruntime.Addr([]*string{xruntime.Addr(fmt.Sprintf("arn:aws:logs:%s:%s:*", env.Region, env.Account))}),
 	}))
 	return role
 }
 
 func newDomainName(scope constructs.Construct, hostedZone, certificateArn, subDomain string) DomainName {
-	cdkName := naming.ToClassName(subDomain)
+	cdkName := xname.ToClassName(subDomain)
 	certificate := awscertificatemanager.Certificate_FromCertificateArn(scope,
-		rtx.Addr(cdkName+"Certificate"),
-		rtx.Addr(certificateArn),
+		xruntime.Addr(cdkName+"Certificate"),
+		xruntime.Addr(certificateArn),
 	)
 
-	return apigatewayv2alpha.NewDomainName(scope, rtx.Addr(cdkName+"DomainName"), &DomainNameProps{
+	return apigatewayv2alpha.NewDomainName(scope, xruntime.Addr(cdkName+"DomainName"), &DomainNameProps{
 		Certificate: certificate,
-		DomainName:  rtx.Addr(subDomain + "." + hostedZone),
+		DomainName:  xruntime.Addr(subDomain + "." + hostedZone),
 	})
 }
