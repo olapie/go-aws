@@ -1,13 +1,13 @@
 package sqskit
 
 import (
-	"code.olapie.com/sugar/v2/xcontext"
-	"code.olapie.com/sugar/v2/xhttp"
 	"context"
 	"fmt"
 
 	"code.olapie.com/log"
 	"code.olapie.com/sugar/v2/must"
+	"code.olapie.com/sugar/v2/xcontext"
+	"code.olapie.com/sugar/v2/xhttp"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"

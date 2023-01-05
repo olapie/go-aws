@@ -2,15 +2,16 @@ package awskit
 
 import (
 	"bytes"
-	"code.olapie.com/sugar/v2/xerror"
-	"code.olapie.com/sugar/v2/xmap"
-	"code.olapie.com/sugar/v2/xruntime"
-	"code.olapie.com/sugar/v2/xslice"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
+
+	"code.olapie.com/sugar/v2/xerror"
+	"code.olapie.com/sugar/v2/xmap"
+	"code.olapie.com/sugar/v2/xruntime"
+	"code.olapie.com/sugar/v2/xslice"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssigner "github.com/aws/aws-sdk-go-v2/aws/signer/v4"

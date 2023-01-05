@@ -1,9 +1,11 @@
 package cdk
 
 import (
+	"fmt"
+	"strings"
+
 	"code.olapie.com/sugar/v2/xname"
 	"code.olapie.com/sugar/v2/xruntime"
-	"fmt"
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
@@ -16,7 +18,6 @@ import (
 	apigatewayv2alpha "github.com/aws/aws-cdk-go/awscdkapigatewayv2alpha/v2"
 	apigatewayv2integrationsalpha "github.com/aws/aws-cdk-go/awscdkapigatewayv2integrationsalpha/v2"
 	"github.com/aws/constructs-go/constructs/v10"
-	"strings"
 )
 
 const (

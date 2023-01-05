@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"code.olapie.com/awskit"
+	"code.olapie.com/sugar/v2/xerror"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
