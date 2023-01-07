@@ -31,6 +31,7 @@ const (
 	IAMActionCreateLogStream = "logs:CreateLogStream"
 	IAMActionPutLogEvents    = "logs:PutLogEvents"
 	IAMActionCreateLogGroup  = "logs:CreateLogGroup"
+	IAMActionSNSPublish      = "sns:Publish"
 )
 
 type ARecord = awsroute53.ARecord
@@ -52,8 +53,15 @@ type Env struct {
 	HostedZone string
 }
 
-func (c *Env) BucketARN(name string) string {
+func (e *Env) BucketARN(name string) string {
 	return fmt.Sprintf("arn:aws:s3:::%s", name)
+}
+
+func (e *Env) SNSTopicARN(topic *string) string {
+	if topic == nil {
+		return fmt.Sprintf("arn:aws:sns:*:%s:*", e.Account)
+	}
+	return fmt.Sprintf("arn:aws:sns:*:%s:%s", e.Account, *topic)
 }
 
 func (e *Env) CertificateARN(certificateID string) string {

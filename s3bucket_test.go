@@ -23,9 +23,9 @@ func TestS3_NotFound(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	id := uuid.NewString()
-	exists, err := bucket.Exists(ctx, id)
-	require.NoError(t, err)
-	require.False(t, exists)
+	_, err := bucket.GetHeadObject(ctx, id)
+	require.Error(t, err)
+	require.True(t, xerror.IsNotExist(err))
 	_, err = bucket.Get(ctx, id)
 	require.EqualError(t, err, xerror.NotFound("object %s doesn't exist", id).Error())
 	err = bucket.Delete(ctx, id)
@@ -40,7 +40,7 @@ func TestS3_Put_Empty(t *testing.T) {
 	defer cancel()
 	id := uuid.NewString()
 	metadata := map[string]string{"test-key": "test value"}
-	err := bucket.Put(ctx, id, nil, metadata)
+	_, err := bucket.Put(ctx, id, nil, metadata)
 	require.NoError(t, err)
 }
 
@@ -49,7 +49,7 @@ func TestS3_Put_MissingID(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	metadata := map[string]string{"test-key": "test value"}
-	err := bucket.Put(ctx, "", nil, metadata)
+	_, err := bucket.Put(ctx, "", nil, metadata)
 	require.Error(t, err)
 }
 
@@ -60,23 +60,22 @@ func TestS3_Put(t *testing.T) {
 	id := uuid.NewString()
 	content := []byte("content" + uuid.NewString())
 	metadata := map[string]string{"test-key": "test value"}
-	err := bucket.Put(ctx, id, content, metadata)
+	_, err := bucket.Put(ctx, id, content, metadata)
 	require.NoError(t, err)
 
 	readContent, err := bucket.Get(ctx, id)
 	require.NoError(t, err)
 	require.Equal(t, content, readContent)
 
-	readMetadata, err := bucket.GetMetadata(ctx, id)
+	head, err := bucket.GetHeadObject(ctx, id)
 	require.NoError(t, err)
-	require.Equal(t, metadata, readMetadata)
+	require.Equal(t, metadata, head.Metadata)
 
 	err = bucket.Delete(ctx, id)
 	require.NoError(t, err)
 
-	exists, err := bucket.Exists(ctx, id)
-	require.NoError(t, err)
-	require.False(t, exists)
+	_, err = bucket.GetHeadObject(ctx, id)
+	require.True(t, xerror.IsNotExist(err))
 }
 
 func TestS3_BatchDelete(t *testing.T) {
@@ -88,7 +87,7 @@ func TestS3_BatchDelete(t *testing.T) {
 		id := uuid.NewString()
 		content := []byte("content" + uuid.NewString())
 		metadata := map[string]string{"test-key": "test value"}
-		err := r.Put(ctx, id, content, metadata)
+		_, err := r.Put(ctx, id, content, metadata)
 		require.NoError(t, err)
 		ids = append(ids, id)
 	}
