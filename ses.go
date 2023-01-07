@@ -21,12 +21,12 @@ type Email struct {
 }
 
 type SES struct {
-	ses *ses.Client
+	c *ses.Client
 }
 
 func NewSES(cfg aws.Config) *SES {
 	return &SES{
-		ses: ses.NewFromConfig(cfg),
+		c: ses.NewFromConfig(cfg),
 	}
 }
 
@@ -78,9 +78,9 @@ func (s *SES) Send(ctx context.Context, email *Email) (string, error) {
 		Source: aws.String(email.From),
 	}
 
-	result, err := s.ses.SendEmail(ctx, input)
+	result, err := s.c.SendEmail(ctx, input)
 	if err != nil {
-		return "", fmt.Errorf("ses.SendEmail: %w", err)
+		return "", fmt.Errorf("c.SendEmail: %w", err)
 	}
 
 	return *result.MessageId, nil
