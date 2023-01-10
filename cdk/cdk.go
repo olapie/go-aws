@@ -31,7 +31,7 @@ const (
 	IAMActionCreateLogStream = "logs:CreateLogStream"
 	IAMActionPutLogEvents    = "logs:PutLogEvents"
 	IAMActionCreateLogGroup  = "logs:CreateLogGroup"
-	IAMActionSNSPublish      = "sns:Publish"
+	IAMActionSNSPublish      = "SNS:Publish"
 )
 
 type ARecord = awsroute53.ARecord

@@ -1,6 +1,7 @@
 package sqskit
 
 import (
+	"code.olapie.com/sugar/v2/base62"
 	"context"
 	"fmt"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"github.com/google/uuid"
 )
 
 func BuildMessageAttributesFromContext(ctx context.Context) map[string]types.MessageAttributeValue {
@@ -59,7 +59,7 @@ func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]eve
 	}
 
 	if traceID == "" {
-		traceID = uuid.NewString()
+		traceID = base62.NewUUIDString()
 	}
 
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
