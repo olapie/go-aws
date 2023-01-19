@@ -114,12 +114,12 @@ func (c *MessageConsumer) Start(ctx context.Context) {
 	for {
 		err := c.receiveMessage(ctx, input)
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			logger.Error("receive sqs message", log.Error(err))
+			logger.Error("receive sqs message", log.Err(err))
 			return
 		}
 
 		if err != nil {
-			logger.Error("receive sqs message", log.Error(err))
+			logger.Error("receive sqs message", log.Err(err))
 			backoff += 100 * time.Millisecond
 			time.Sleep(backoff)
 		}
@@ -139,7 +139,7 @@ func (c *MessageConsumer) getQueueURL(ctx context.Context, retries int) {
 			c.queueURL = output.QueueUrl
 			break
 		}
-		log.FromContext(ctx).Error("get queue url", log.Error(err))
+		log.FromContext(ctx).Error("get queue url", log.Err(err))
 	}
 }
 
@@ -147,7 +147,7 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 	output, err := c.api.ReceiveMessage(ctx, input)
 	logger := log.FromContext(ctx)
 	if err != nil {
-		logger.Error("ReceiveMessage", log.Error(err))
+		logger.Error("ReceiveMessage", log.Err(err))
 		return err
 	}
 
@@ -175,7 +175,7 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		}
 
 		if err = c.handler.HandleMessage(ctx, *msg.Body); err != nil {
-			msgLogger.Error("handler.HandleMessage", log.Error(err))
+			msgLogger.Error("handler.HandleMessage", log.Err(err))
 			continue
 		}
 
@@ -187,7 +187,7 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		})
 
 		if err != nil {
-			msgLogger.Warn("api.DeleteMessage", log.Error(err))
+			msgLogger.Warn("api.DeleteMessage", log.Err(err))
 		}
 	}
 	return nil
