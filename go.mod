@@ -3,7 +3,7 @@ module code.olapie.com/awskit
 go 1.19
 
 require (
-	code.olapie.com/log v1.1.1
+	code.olapie.com/log v1.1.2
 	code.olapie.com/router v1.0.5
 	code.olapie.com/sugar/v2 v2.1.2
 	code.olapie.com/sugar/v2/xcontact v0.1.1
