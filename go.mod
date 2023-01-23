@@ -5,8 +5,7 @@ go 1.19
 require (
 	code.olapie.com/log v1.1.2
 	code.olapie.com/router v1.0.5
-	code.olapie.com/sugar/v2 v2.1.2
-	code.olapie.com/sugar/v2/xcontact v0.1.1
+	code.olapie.com/sugar/v2 v2.1.6
 	github.com/aws/aws-lambda-go v1.37.0
 	github.com/aws/aws-sdk-go-v2 v1.17.3
 	github.com/aws/aws-sdk-go-v2/config v1.18.2
@@ -24,6 +23,7 @@ require (
 )
 
 require (
+	code.olapie.com/sugar/xcontact/v2 v2.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.10 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.2 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.19 // indirect

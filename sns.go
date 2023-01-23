@@ -1,11 +1,11 @@
 package awskit
 
 import (
+	"code.olapie.com/sugar/xcontact/v2"
 	"context"
 	"errors"
 	"fmt"
 
-	"code.olapie.com/sugar/v2/xcontact"
 	"code.olapie.com/sugar/v2/xruntime"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
