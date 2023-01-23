@@ -3,7 +3,7 @@ module code.olapie.com/awskit/cdk
 go 1.19
 
 require (
-	code.olapie.com/sugar/v2 v2.1.2
+	code.olapie.com/sugar/v2 v2.1.6
 	github.com/aws/aws-cdk-go/awscdk/v2 v2.61.0
 	github.com/aws/aws-cdk-go/awscdkapigatewayv2alpha/v2 v2.61.0-alpha.0
 	github.com/aws/aws-cdk-go/awscdkapigatewayv2integrationsalpha/v2 v2.61.0-alpha.0
