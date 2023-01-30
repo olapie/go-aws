@@ -19,16 +19,14 @@ func Error(err error) *Response {
 	}
 
 	if er, ok := err.(*xerror.Error); ok {
-		return JSON(er.Code, er)
+		return JSON(er.Code(), er)
 	}
 
-	var er xerror.Error
-	er.Code = xerror.GetCode(err)
-	if er.Code == 0 {
-		er.Code = http.StatusInternalServerError
+	code := xerror.GetCode(err)
+	if code == 0 {
+		code = http.StatusInternalServerError
 	}
-	er.Message = err.Error()
-	return JSON(er.Code, er)
+	return JSON(code, xerror.New(code, err.Error()))
 }
 
 func OK() *Response {

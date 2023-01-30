@@ -5,7 +5,7 @@ go 1.19
 require (
 	code.olapie.com/log v1.1.4
 	code.olapie.com/router v1.1.0
-	code.olapie.com/sugar/v2 v2.2.1
+	code.olapie.com/sugar/v2 v2.2.2
 	code.olapie.com/sugar/xcontact/v2 v2.0.0
 	github.com/aws/aws-lambda-go v1.37.0
 	github.com/aws/aws-sdk-go-v2 v1.17.3
