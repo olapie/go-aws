@@ -9,7 +9,6 @@ import (
 
 	"code.olapie.com/sugar/v2/xerror"
 	"code.olapie.com/sugar/v2/xjson"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"golang.org/x/exp/constraints"
