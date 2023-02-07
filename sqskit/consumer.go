@@ -165,7 +165,9 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		} else {
 			traceID = uuid.NewString()
 		}
-		ctx = xcontext.WithTraceID(ctx, traceID)
+		ctx = xcontext.WithRequestMetadata(ctx, xcontext.RequestMetadata{
+			TraceID: traceID,
+		})
 		msgLogger := logger.With(log.String("trace_id", traceID))
 		msgLogger.Info("START", log.String("message_id", msgID))
 

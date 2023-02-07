@@ -46,7 +46,6 @@ func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]eve
 	if len(attrs) != 0 {
 		if attr, ok := attrs[xhttp.KeyTraceID]; ok && attr.StringValue != nil {
 			traceID = *attr.StringValue
-			ctx = xcontext.WithTraceID(ctx, *attr.StringValue)
 		}
 
 		if attr, ok := attrs[xhttp.KeyUserID]; ok && attr.StringValue != nil {
@@ -63,7 +62,9 @@ func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]eve
 	}
 
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
-	ctx = xcontext.WithTraceID(ctx, traceID)
+	ctx = xcontext.WithRequestMetadata(ctx, xcontext.RequestMetadata{
+		TraceID: traceID,
+	})
 	ctx = log.BuildContext(ctx, logger)
 	return ctx
 }

@@ -3,9 +3,9 @@ module code.olapie.com/awskit
 go 1.19
 
 require (
-	code.olapie.com/log v1.1.4
+	code.olapie.com/log v1.1.6
 	code.olapie.com/router v1.1.0
-	code.olapie.com/sugar/v2 v2.2.3
+	code.olapie.com/sugar/v2 v2.2.4
 	code.olapie.com/sugar/xcontact/v2 v2.0.0
 	github.com/aws/aws-lambda-go v1.37.0
 	github.com/aws/aws-sdk-go-v2 v1.17.3
@@ -44,6 +44,7 @@ require (
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/natefinch/lumberjack/v3 v3.0.0-alpha // indirect
 	github.com/nyaruka/phonenumbers v1.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
@@ -51,6 +52,5 @@ require (
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -144,9 +144,11 @@ func BuildContext(ctx context.Context, request *Request) context.Context {
 	if traceID == "" {
 		traceID = uuid.NewString()
 	}
-	ctx = xcontext.WithAppID(ctx, appID)
-	ctx = xcontext.WithClientID(ctx, clientID)
-	ctx = xcontext.WithTraceID(ctx, traceID)
+	ctx = xcontext.WithRequestMetadata(ctx, xcontext.RequestMetadata{
+		TraceID:  traceID,
+		ClientID: clientID,
+		AppID:    appID,
+	})
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
 	ctx = log.BuildContext(ctx, logger)
 	return ctx
