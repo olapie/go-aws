@@ -7,6 +7,7 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"code.olapie.com/log"
 	"code.olapie.com/router"
@@ -74,11 +75,11 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		resp = handler.Handler()(ctx, request)
 		if resp == nil {
-			resp = Error(xerror.NotImplemented("no response from handler"))
+			resp = Error(xerror.New(http.StatusNotImplemented, "no response from handler"))
 		}
 		return resp
 	}
-	return Error(xerror.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
+	return Error(xerror.New(http.StatusNotFound, "endpoint not found: %s %s", httpInfo.Method, request.RawPath))
 }
 
 func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
@@ -94,7 +95,7 @@ func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 		if ecdsa.VerifyASN1(pubKey, hash[:], sign) {
 			return Next(ctx, request)
 		}
-		return Error(xerror.NotAcceptable("invalid signature"))
+		return Error(xerror.New(http.StatusNotAcceptable, "invalid signature"))
 	}
 }
 

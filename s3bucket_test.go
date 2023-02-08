@@ -27,7 +27,7 @@ func TestS3_NotFound(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, xerror.IsNotExist(err))
 	_, err = bucket.Get(ctx, id)
-	require.EqualError(t, err, xerror.NotFound("object %s doesn't exist", id).Error())
+	require.EqualError(t, err, xerror.New(http.StatusNotFound, "object %s doesn't exist", id).Error())
 	err = bucket.Delete(ctx, id)
 	require.NoError(t, err)
 	err = bucket.BatchDelete(ctx, []string{id})

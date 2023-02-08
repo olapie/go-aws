@@ -7,7 +7,7 @@ import (
 )
 
 func TestJSON(t *testing.T) {
-	err := xerror.BadRequest("test")
+	err := xerror.New(http.StatusBadRequest, "test")
 	body := Error(err).Body
 	t.Log(xjson.ToString(err))
 	t.Log(body)

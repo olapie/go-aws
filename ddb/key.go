@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"reflect"
 	"strings"
 
@@ -119,12 +120,12 @@ func (d *PrimaryKeyDefinition[P, S]) DecodeStringToValue(s string) (map[string]t
 	for name, val := range nameToValue {
 		typ, ok := d.Prototype()[name]
 		if !ok {
-			return nil, xerror.BadRequest("invalid token")
+			return nil, xerror.New(http.StatusBadRequest, "invalid token")
 		}
 		attr := reflect.New(typ)
 		err = json.Unmarshal(xjson.ToBytes(val), attr.Interface())
 		if err != nil {
-			return nil, xerror.BadRequest("invalid token")
+			return nil, xerror.New(http.StatusBadRequest, "invalid token")
 		}
 		key[name] = attr.Elem().Interface().(types.AttributeValue)
 	}

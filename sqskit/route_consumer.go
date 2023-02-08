@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"code.olapie.com/log"
 	"code.olapie.com/router"
@@ -51,5 +52,5 @@ func (c *RoutableMessageConsumer) HandleMessage(ctx context.Context, rawMessage 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		return handler.Handler()(ctx, message.Body)
 	}
-	return xerror.NotFound("endpoint not found")
+	return xerror.New(http.StatusNotFound, "endpoint not found")
 }

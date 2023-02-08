@@ -88,7 +88,7 @@ func (s *S3Bucket) Get(ctx context.Context, key string, optFns ...func(input *s3
 	output, err := s.client.GetObject(ctx, input)
 	if err != nil {
 		if _, ok := xerror.CauseOf[*types.NoSuchKey](err); ok {
-			return nil, xerror.NotFound("object %s doesn't exist", key)
+			return nil, xerror.New(http.StatusNotFound, "object %s doesn't exist", key)
 		}
 		return nil, fmt.Errorf("s3.GetObject: %w", err)
 	}
@@ -310,7 +310,7 @@ func (s *S3Bucket) GetHeadObject(ctx context.Context, key string, optFns ...func
 	if err != nil {
 		if apiErr, ok := xerror.CauseOf[smithy.APIError](err); ok {
 			if apiErr.ErrorCode() == s3ErrorNotFound.ErrorCode() {
-				return nil, xerror.NotFound("key")
+				return nil, xerror.New(http.StatusNotFound, "key")
 			}
 		}
 		return nil, err
