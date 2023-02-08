@@ -138,16 +138,15 @@ func Redirect(permanent bool, location string) *Response {
 }
 
 func BuildContext(ctx context.Context, request *Request) context.Context {
-	appID := xhttp.GetHeader(request.Headers, xhttp.KeyAppID)
-	clientID := xhttp.GetHeader(request.Headers, xhttp.KeyClientID)
 	traceID := xhttp.GetHeader(request.Headers, xhttp.KeyTraceID)
 	if traceID == "" {
 		traceID = uuid.NewString()
 	}
 	ctx = xcontext.WithRequestMetadata(ctx, xcontext.RequestMetadata{
-		TraceID:  traceID,
-		ClientID: clientID,
-		AppID:    appID,
+		AppID:     xhttp.GetHeader(request.Headers, xhttp.KeyAppID),
+		ClientID:  xhttp.GetHeader(request.Headers, xhttp.KeyClientID),
+		ServiceID: xhttp.GetHeader(request.Headers, xhttp.KeyServiceID),
+		TraceID:   traceID,
 	})
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
 	ctx = log.BuildContext(ctx, logger)
