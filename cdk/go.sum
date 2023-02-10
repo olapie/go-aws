@@ -1,5 +1,5 @@
-code.olapie.com/sugar/v2 v2.1.6 h1:yQS7H5YXh6mXzpA9LY19jKN58cT5KI85duY5AsFcGRY=
-code.olapie.com/sugar/v2 v2.1.6/go.mod h1:1oErXpdsvE5TKWdM16KeV4cCw0ygrwzh2vRz+IhdBhQ=
+code.olapie.com/sugar/v2 v2.3.4 h1:UkAR2gMdxEf24j5kFTOm9SEcpRyHWB9LIwEbPC7XdwY=
+code.olapie.com/sugar/v2 v2.3.4/go.mod h1:H4m9CSL4V+i0pZKwurkMHiaSPL4Nfu6sXbOr6ri3fQw=
 github.com/Masterminds/semver/v3 v3.2.0 h1:3MEsd0SM6jqZojhjLWWeBY+Kcjy9i6MQAeY7YgDP83g=
 github.com/Masterminds/semver/v3 v3.2.0/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
 github.com/aws/aws-cdk-go/awscdk/v2 v2.61.0 h1:o72xLY3HPuKcr2IYAw4a/2O6oKq2LfaLCQEmMsgzQGs=

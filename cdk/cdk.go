@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"code.olapie.com/sugar/v2/naming"
 	"code.olapie.com/sugar/v2/rt"
-	"code.olapie.com/sugar/v2/xname"
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
@@ -77,7 +77,7 @@ func (e *Env) GetFullName(baseName string) string {
 }
 
 func (e *Env) GetResourceName(typ, baseName string) string {
-	return xname.ToClassName(e.GetFullName(baseName)) + typ
+	return naming.ToClassName(e.GetFullName(baseName)) + typ
 }
 
 type DomainConfig struct {
@@ -89,7 +89,7 @@ type FunctionProps = awslambda.FunctionProps
 
 func NewARecord(scope constructs.Construct, hostedZone string, certificateArn, subDomain string) (ARecord, DomainName) {
 	domainName := newDomainName(scope, hostedZone, certificateArn, subDomain)
-	zoneCDKName := xname.ToClassName(hostedZone) + xname.ToClassName(subDomain) + "Zone"
+	zoneCDKName := naming.ToClassName(hostedZone) + naming.ToClassName(subDomain) + "Zone"
 	zone := awsroute53.HostedZone_FromLookup(scope, rt.Addr(zoneCDKName), &awsroute53.HostedZoneProviderProps{
 		DomainName: rt.Addr(hostedZone),
 	})
@@ -98,7 +98,7 @@ func NewARecord(scope constructs.Construct, hostedZone string, certificateArn, s
 		domainName.RegionalDomainName(),
 		domainName.RegionalHostedZoneId())
 
-	record := awsroute53.NewARecord(scope, rt.Addr(xname.ToClassName(subDomain)+"ARecord"), &awsroute53.ARecordProps{
+	record := awsroute53.NewARecord(scope, rt.Addr(naming.ToClassName(subDomain)+"ARecord"), &awsroute53.ARecordProps{
 		Zone:           zone,
 		Comment:        nil,
 		DeleteExisting: rt.Addr(true),
@@ -112,7 +112,7 @@ func NewARecord(scope constructs.Construct, hostedZone string, certificateArn, s
 func NewFunction(scope constructs.Construct, env *Env, name string, props *FunctionProps) awslambda.Function {
 	funcName := env.GetFullName(name)
 	handlerName := env.Service + "-" + name
-	cdkName := xname.ToClassName(funcName) + "LambdaFunction"
+	cdkName := naming.ToClassName(funcName) + "LambdaFunction"
 	if props == nil {
 		props = &FunctionProps{}
 	}
@@ -156,7 +156,7 @@ type HttpApiEndpoint struct {
 }
 
 func NewHttpApi(scope constructs.Construct, name string, domainName DomainName, endpoints []HttpApiEndpoint) HttpApi {
-	cdkName := xname.ToClassName(name)
+	cdkName := naming.ToClassName(name)
 	var routes []*apigatewayv2alpha.AddRoutesOptions
 	funcToIntegration := make(map[Function]HttpLambdaIntegration)
 	var defaultIntegration HttpLambdaIntegration
@@ -197,7 +197,7 @@ func NewHttpApi(scope constructs.Construct, name string, domainName DomainName, 
 
 func NewQueue(scope constructs.Construct, env *Env, name string, props *QueueProps) Queue {
 	name = env.GetFullName(name)
-	cdkName := xname.ToClassName(name)
+	cdkName := naming.ToClassName(name)
 	if props == nil {
 		props = new(QueueProps)
 	}
@@ -230,7 +230,7 @@ func NewQueue(scope constructs.Construct, env *Env, name string, props *QueuePro
 }
 
 func NewBucket(scope constructs.Construct, name string) Bucket {
-	cdkName := xname.ToClassName(name) + "Bucket"
+	cdkName := naming.ToClassName(name) + "Bucket"
 	return awss3.NewBucket(scope, rt.Addr(cdkName), &awss3.BucketProps{
 		AutoDeleteObjects: rt.Addr(false),
 		BucketName:        rt.Addr(name),
@@ -240,7 +240,7 @@ func NewBucket(scope constructs.Construct, name string) Bucket {
 }
 
 func newFunctionRole(scope constructs.Construct, env *Env, funcFullName string) awsiam.Role {
-	cdkName := xname.ToClassName(funcFullName) + "Role"
+	cdkName := naming.ToClassName(funcFullName) + "Role"
 	role := awsiam.NewRole(scope, rt.Addr(cdkName), &awsiam.RoleProps{
 		RoleName:  rt.Addr(cdkName),
 		AssumedBy: awsiam.NewServicePrincipal(rt.Addr(IAMServiceLambda), nil),
@@ -261,7 +261,7 @@ func newFunctionRole(scope constructs.Construct, env *Env, funcFullName string) 
 }
 
 func newDomainName(scope constructs.Construct, hostedZone, certificateArn, subDomain string) DomainName {
-	cdkName := xname.ToClassName(subDomain)
+	cdkName := naming.ToClassName(subDomain)
 	certificate := awscertificatemanager.Certificate_FromCertificateArn(scope,
 		rt.Addr(cdkName+"Certificate"),
 		rt.Addr(certificateArn),
