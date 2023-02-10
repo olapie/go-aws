@@ -165,9 +165,7 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		} else {
 			traceID = uuid.NewString()
 		}
-		ctx = ctxutil.WithRequestMetadata(ctx, ctxutil.RequestMetadata{
-			TraceID: traceID,
-		})
+		ctx = ctxutil.Request(ctx).WithTraceID(traceID).Build()
 		msgLogger := logger.With(log.String("trace_id", traceID))
 		msgLogger.Info("START", log.String("message_id", msgID))
 

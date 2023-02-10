@@ -1,10 +1,10 @@
 package lambdahttp
 
 import (
+	"code.olapie.com/log"
 	"context"
 	"net/http"
 
-	"code.olapie.com/log"
 	"code.olapie.com/sugar/v2/ctxutil"
 	"code.olapie.com/sugar/v2/httpkit"
 	"code.olapie.com/sugar/v2/jsonutil"
@@ -142,12 +142,12 @@ func BuildContext(ctx context.Context, request *Request) context.Context {
 	if traceID == "" {
 		traceID = uuid.NewString()
 	}
-	ctx = ctxutil.WithRequestMetadata(ctx, ctxutil.RequestMetadata{
-		AppID:     httpkit.GetHeader(request.Headers, httpkit.KeyAppID),
-		ClientID:  httpkit.GetHeader(request.Headers, httpkit.KeyClientID),
-		ServiceID: httpkit.GetHeader(request.Headers, httpkit.KeyServiceID),
-		TraceID:   traceID,
-	})
+
+	ctx = ctxutil.Request(ctx).WithAppID(httpkit.GetHeader(request.Headers, httpkit.KeyAppID)).
+		WithClientID(httpkit.GetHeader(request.Headers, httpkit.KeyClientID)).
+		WithServiceID(httpkit.GetHeader(request.Headers, httpkit.KeyServiceID)).
+		WithTraceID(traceID).Build()
+
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
 	ctx = log.BuildContext(ctx, logger)
 	return ctx

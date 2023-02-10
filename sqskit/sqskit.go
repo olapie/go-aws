@@ -1,6 +1,7 @@
 package sqskit
 
 import (
+	"code.olapie.com/sugar/v2/conv"
 	"context"
 	"fmt"
 
@@ -8,7 +9,6 @@ import (
 	"code.olapie.com/sugar/v2/base62"
 	"code.olapie.com/sugar/v2/ctxutil"
 	"code.olapie.com/sugar/v2/httpkit"
-	"code.olapie.com/sugar/v2/must"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -52,7 +52,7 @@ func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]eve
 			if attr.DataType == "String" {
 				ctx = ctxutil.WithLogin(ctx, *attr.StringValue)
 			} else {
-				ctx = ctxutil.WithLogin(ctx, must.ToInt64(*attr.StringValue))
+				ctx = ctxutil.WithLogin(ctx, conv.MustToInt64(*attr.StringValue))
 			}
 		}
 	}
@@ -62,9 +62,7 @@ func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]eve
 	}
 
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
-	ctx = ctxutil.WithRequestMetadata(ctx, ctxutil.RequestMetadata{
-		TraceID: traceID,
-	})
+	ctx = ctxutil.Request(ctx).WithTraceID(traceID).Build()
 	ctx = log.BuildContext(ctx, logger)
 	return ctx
 }
