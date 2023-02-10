@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"code.olapie.com/log"
-	"code.olapie.com/sugar/v2/xcontext"
+	"code.olapie.com/sugar/v2/ctxutil"
+	"code.olapie.com/sugar/v2/httpkit"
+	"code.olapie.com/sugar/v2/jsonutil"
 	"code.olapie.com/sugar/v2/xerror"
-	"code.olapie.com/sugar/v2/xhttp"
-	"code.olapie.com/sugar/v2/xjson"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
 )
@@ -36,7 +36,7 @@ func OK() *Response {
 func Status(s int) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.Headers = make(map[string]string)
-	resp.Headers[xhttp.KeyContentType] = xhttp.Plain
+	resp.Headers[httpkit.KeyContentType] = httpkit.Plain
 	resp.StatusCode = s
 	resp.Body = http.StatusText(s)
 	return resp
@@ -71,8 +71,8 @@ func JSON(status int, v any) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[xhttp.KeyContentType] = xhttp.JSON
-	resp.Body = xjson.ToString(v)
+	resp.Headers[httpkit.KeyContentType] = httpkit.JSON
+	resp.Body = jsonutil.ToString(v)
 	return resp
 }
 
@@ -84,7 +84,7 @@ func CSS(status int, cssText string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[xhttp.KeyContentType] = xhttp.CSS
+	resp.Headers[httpkit.KeyContentType] = httpkit.CSS
 	resp.Body = cssText
 	return resp
 }
@@ -104,7 +104,7 @@ func HTML(status int, htmlText string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[xhttp.KeyContentType] = xhttp.HtmlUTF8
+	resp.Headers[httpkit.KeyContentType] = httpkit.HtmlUTF8
 	resp.Body = htmlText
 	return resp
 }
@@ -120,7 +120,7 @@ func Text(status int, text string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[xhttp.KeyContentType] = xhttp.Plain
+	resp.Headers[httpkit.KeyContentType] = httpkit.Plain
 	resp.Body = text
 	return resp
 }
@@ -133,19 +133,19 @@ func Redirect(permanent bool, location string) *Response {
 		resp.StatusCode = http.StatusFound
 	}
 	resp.Headers = make(map[string]string)
-	resp.Headers[xhttp.KeyLocation] = location
+	resp.Headers[httpkit.KeyLocation] = location
 	return resp
 }
 
 func BuildContext(ctx context.Context, request *Request) context.Context {
-	traceID := xhttp.GetHeader(request.Headers, xhttp.KeyTraceID)
+	traceID := httpkit.GetHeader(request.Headers, httpkit.KeyTraceID)
 	if traceID == "" {
 		traceID = uuid.NewString()
 	}
-	ctx = xcontext.WithRequestMetadata(ctx, xcontext.RequestMetadata{
-		AppID:     xhttp.GetHeader(request.Headers, xhttp.KeyAppID),
-		ClientID:  xhttp.GetHeader(request.Headers, xhttp.KeyClientID),
-		ServiceID: xhttp.GetHeader(request.Headers, xhttp.KeyServiceID),
+	ctx = ctxutil.WithRequestMetadata(ctx, ctxutil.RequestMetadata{
+		AppID:     httpkit.GetHeader(request.Headers, httpkit.KeyAppID),
+		ClientID:  httpkit.GetHeader(request.Headers, httpkit.KeyClientID),
+		ServiceID: httpkit.GetHeader(request.Headers, httpkit.KeyServiceID),
 		TraceID:   traceID,
 	})
 	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))

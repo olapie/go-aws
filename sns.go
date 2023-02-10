@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"code.olapie.com/sugar/v2/xruntime"
-	"code.olapie.com/sugar/xcontact/v2"
+	"code.olapie.com/sugar/contacts"
+	"code.olapie.com/sugar/v2/rt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 )
@@ -21,10 +21,10 @@ func NewSNS(cfg aws.Config) *SNS {
 	}
 }
 
-func (s *SNS) SendMobileMessage(ctx context.Context, recipient *xcontact.PhoneNumber, message string, optFns ...func(*sns.Options)) (string, error) {
+func (s *SNS) SendMobileMessage(ctx context.Context, recipient *contacts.PhoneNumber, message string, optFns ...func(*sns.Options)) (string, error) {
 	input := &sns.PublishInput{
-		Message:     xruntime.Addr(message),
-		PhoneNumber: xruntime.Addr(recipient.InternationalFormat()),
+		Message:     rt.Addr(message),
+		PhoneNumber: rt.Addr(recipient.InternationalFormat()),
 	}
 	output, err := s.c.Publish(ctx, input, optFns...)
 	if err != nil {

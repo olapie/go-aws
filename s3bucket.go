@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"time"
 
+	"code.olapie.com/sugar/v2/maps"
+	"code.olapie.com/sugar/v2/rt"
+	"code.olapie.com/sugar/v2/slices"
 	"code.olapie.com/sugar/v2/xerror"
-	"code.olapie.com/sugar/v2/xmap"
-	"code.olapie.com/sugar/v2/xruntime"
-	"code.olapie.com/sugar/v2/xslice"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssigner "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -72,7 +72,7 @@ func (s *S3Bucket) Put(ctx context.Context, key string, content []byte, metadata
 	if err != nil {
 		return "", err
 	}
-	return xruntime.Dereference(output.ETag), nil
+	return rt.Dereference(output.ETag), nil
 }
 
 func (s *S3Bucket) Get(ctx context.Context, key string, optFns ...func(input *s3.GetObjectInput)) ([]byte, error) {
@@ -135,7 +135,7 @@ func (s *S3Bucket) CompleteMultipartUpload(ctx context.Context, key, uploadID st
 	if err != nil {
 		return "", err
 	}
-	return xruntime.Dereference(output.ETag), nil
+	return rt.Dereference(output.ETag), nil
 }
 
 func (s *S3Bucket) AbortMultipartUpload(ctx context.Context, key, uploadID string, optFns ...func(*s3.AbortMultipartUploadInput)) error {
@@ -257,7 +257,7 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string, optFns ...func
 	input := &s3.DeleteObjectsInput{
 		Bucket: aws.String(s.bucket),
 		Delete: &types.Delete{
-			Objects: xslice.MustTransform(ids, func(key string) types.ObjectIdentifier {
+			Objects: slices.MustTransform(ids, func(key string) types.ObjectIdentifier {
 				return types.ObjectIdentifier{
 					Key: aws.String(key),
 				}
@@ -279,12 +279,12 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string, optFns ...func
 	}
 
 	if len(output.Deleted) != len(ids) {
-		idSet := xslice.MustToSet[string, string](ids, nil)
+		idSet := slices.MustToSet[string, string](ids, nil)
 		for _, del := range output.Deleted {
 			delete(idSet, *del.Key)
 		}
 		if len(idSet) != 0 {
-			return fmt.Errorf("some ids cannot be deleted: %v", xmap.GetKeys(idSet))
+			return fmt.Errorf("some ids cannot be deleted: %v", maps.GetKeys(idSet))
 		}
 	}
 

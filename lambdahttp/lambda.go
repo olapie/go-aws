@@ -11,10 +11,10 @@ import (
 
 	"code.olapie.com/log"
 	"code.olapie.com/router"
-	"code.olapie.com/sugar/v2/xcontext"
+	"code.olapie.com/sugar/v2/ctxutil"
+	"code.olapie.com/sugar/v2/httpkit"
+	"code.olapie.com/sugar/v2/jsonutil"
 	"code.olapie.com/sugar/v2/xerror"
-	"code.olapie.com/sugar/v2/xhttp"
-	"code.olapie.com/sugar/v2/xjson"
 	"github.com/aws/aws-lambda-go/events"
 )
 
@@ -37,7 +37,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 	httpInfo := request.RequestContext.HTTP
 	logger := log.FromContext(ctx)
 	logger.Info("Start",
-		log.String("header", xjson.ToString(request.Headers)),
+		log.String("header", jsonutil.ToString(request.Headers)),
 		log.String("path", request.RawPath),
 		log.String("query", request.RawQueryString),
 		log.String("method", httpInfo.Method),
@@ -66,7 +66,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		if resp.Headers == nil {
 			resp.Headers = make(map[string]string)
 		}
-		xhttp.SetTraceID(resp.Headers, xcontext.GetTraceID(ctx))
+		httpkit.SetTraceID(resp.Headers, ctxutil.GetTraceID(ctx))
 	}()
 
 	endpoint, _ := r.Match(httpInfo.Method, request.RawPath)
@@ -84,10 +84,10 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 
 func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
 	return func(ctx context.Context, request *Request) *Response {
-		if err := xhttp.CheckTimestamp(request.Headers); err != nil {
+		if err := httpkit.CheckTimestamp(request.Headers); err != nil {
 			return Error(err)
 		}
-		sign, err := xhttp.DecodeSign(request.Headers)
+		sign, err := httpkit.DecodeSign(request.Headers)
 		if err != nil {
 			return Error(err)
 		}
@@ -105,8 +105,8 @@ func getMessageHashForSigning(ctx context.Context, req *Request) []byte {
 	buf.WriteString(httpInfo.Method)
 	buf.WriteString(httpInfo.Path)
 	buf.WriteString(req.RawQueryString)
-	buf.WriteString(xhttp.GetHeader(req.Headers, xhttp.KeyTraceID))
-	buf.WriteString(xhttp.GetHeader(req.Headers, xhttp.KeyTimestamp))
+	buf.WriteString(httpkit.GetHeader(req.Headers, httpkit.KeyTraceID))
+	buf.WriteString(httpkit.GetHeader(req.Headers, httpkit.KeyTimestamp))
 	hash := md5.Sum(buf.Bytes())
 	return hash[:]
 }

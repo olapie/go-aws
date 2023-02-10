@@ -5,8 +5,8 @@ go 1.19
 require (
 	code.olapie.com/log v1.1.6
 	code.olapie.com/router v1.1.0
-	code.olapie.com/sugar/v2 v2.2.13
-	code.olapie.com/sugar/xcontact/v2 v2.0.0
+	code.olapie.com/sugar/contacts v0.1.1
+	code.olapie.com/sugar/v2 v2.3.4
 	github.com/aws/aws-lambda-go v1.37.0
 	github.com/aws/aws-sdk-go-v2 v1.17.4
 	github.com/aws/aws-sdk-go-v2/config v1.18.2
@@ -42,10 +42,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.17.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/golang/protobuf v1.5.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/natefinch/lumberjack/v3 v3.0.0-alpha // indirect
-	github.com/nyaruka/phonenumbers v1.1.5 // indirect
+	github.com/nyaruka/phonenumbers v1.1.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect

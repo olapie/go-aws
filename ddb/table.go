@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"reflect"
 
+	"code.olapie.com/sugar/v2/rt"
+	"code.olapie.com/sugar/v2/slices"
 	"code.olapie.com/sugar/v2/xerror"
-	"code.olapie.com/sugar/v2/xruntime"
-	"code.olapie.com/sugar/v2/xslice"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
@@ -53,7 +53,7 @@ func NewTable[E any, P PartitionKeyConstraint, S SortKeyConstraint](
 	}
 
 	var elem E
-	attrs, err := attributevalue.MarshalMap(xruntime.DeepNew(reflect.TypeOf(elem)).Elem().Interface())
+	attrs, err := attributevalue.MarshalMap(rt.DeepNew(reflect.TypeOf(elem)).Elem().Interface())
 	if err != nil {
 		panic(err)
 	}
@@ -80,7 +80,7 @@ func (t *Table[E, P, S]) Put(ctx context.Context, item E) error {
 }
 
 func (t *Table[E, P, S]) BatchPut(ctx context.Context, items []E) error {
-	requests, err := xslice.Transform(items, func(item E) (types.WriteRequest, error) {
+	requests, err := slices.Transform(items, func(item E) (types.WriteRequest, error) {
 		var req types.WriteRequest
 		attrs, err := attributevalue.MarshalMap(item)
 		if err != nil {
@@ -298,7 +298,7 @@ func (t *Table[E, P, S]) createQueryInput(partition P, sortKey *S, limit int32) 
 		sortKeyCond := expression.Key(t.pkDefinition.sortKeyName).Equal(expression.Value(*sortKey))
 		keyCond = keyCond.And(sortKeyCond)
 	}
-	cols := xslice.MustTransform(t.columns, expression.Name)
+	cols := slices.MustTransform(t.columns, expression.Name)
 	proj := expression.NamesList(cols[0], cols[1:]...)
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCond).WithProjection(proj).Build()
 	if err != nil {
@@ -319,7 +319,7 @@ func (t *Table[E, P, S]) createQueryInput(partition P, sortKey *S, limit int32) 
 }
 
 func (t *Table[E, P, S]) batchDelete(ctx context.Context, pks []*PrimaryKey[P, S]) error {
-	requests := xslice.MustTransform(pks, func(pk *PrimaryKey[P, S]) types.WriteRequest {
+	requests := slices.MustTransform(pks, func(pk *PrimaryKey[P, S]) types.WriteRequest {
 		return types.WriteRequest{
 			DeleteRequest: &types.DeleteRequest{
 				Key: pk.AttributeValue(),

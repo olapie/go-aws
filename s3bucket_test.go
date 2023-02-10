@@ -2,6 +2,7 @@ package awskit_test
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"testing"
 	"time"

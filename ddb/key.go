@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"strings"
 
+	"code.olapie.com/sugar/v2/jsonutil"
 	"code.olapie.com/sugar/v2/xerror"
-	"code.olapie.com/sugar/v2/xjson"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"golang.org/x/exp/constraints"
@@ -123,7 +123,7 @@ func (d *PrimaryKeyDefinition[P, S]) DecodeStringToValue(s string) (map[string]t
 			return nil, xerror.New(http.StatusBadRequest, "invalid token")
 		}
 		attr := reflect.New(typ)
-		err = json.Unmarshal(xjson.ToBytes(val), attr.Interface())
+		err = json.Unmarshal(jsonutil.ToBytes(val), attr.Interface())
 		if err != nil {
 			return nil, xerror.New(http.StatusBadRequest, "invalid token")
 		}
@@ -134,7 +134,7 @@ func (d *PrimaryKeyDefinition[P, S]) DecodeStringToValue(s string) (map[string]t
 }
 
 func (d *PrimaryKeyDefinition[P, S]) EncodeValueToString(v map[string]types.AttributeValue) string {
-	return base64.StdEncoding.EncodeToString(xjson.ToBytes(v))
+	return base64.StdEncoding.EncodeToString(jsonutil.ToBytes(v))
 }
 
 type PrimaryKey[P PartitionKeyConstraint, S SortKeyConstraint] struct {
