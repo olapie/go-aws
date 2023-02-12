@@ -6,7 +6,7 @@ require (
 	code.olapie.com/log v1.1.6
 	code.olapie.com/router v1.1.0
 	code.olapie.com/sugar/contacts v0.1.2
-	code.olapie.com/sugar/v2 v2.3.9
+	code.olapie.com/sugar/v2 v2.3.10
 	github.com/aws/aws-lambda-go v1.37.0
 	github.com/aws/aws-sdk-go-v2 v1.17.4
 	github.com/aws/aws-sdk-go-v2/config v1.18.12
@@ -20,7 +20,7 @@ require (
 	github.com/aws/smithy-go v1.13.5
 	github.com/google/uuid v1.3.0
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
+	golang.org/x/exp v0.0.0-20230212135524-a684f29349b6
 )
 
 require (
@@ -42,15 +42,15 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.18.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
-	github.com/golang/protobuf v1.5.0 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/natefinch/lumberjack/v3 v3.0.0-alpha // indirect
-	github.com/nyaruka/phonenumbers v1.1.4 // indirect
+	github.com/nyaruka/phonenumbers v1.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/text v0.6.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -279,7 +279,7 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string, optFns ...func
 	}
 
 	if len(output.Deleted) != len(ids) {
-		idSet := slices.MustToSet[string, string](ids, nil)
+		idSet := slices.ToSet(ids)
 		for _, del := range output.Deleted {
 			delete(idSet, *del.Key)
 		}
