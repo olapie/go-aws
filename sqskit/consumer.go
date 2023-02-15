@@ -187,7 +187,7 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		})
 
 		if err != nil {
-			msgLogger.Warn("api.DeleteMessage", log.Err(err))
+			msgLogger.Warn("delete message", log.Err(err))
 		}
 	}
 	return nil
