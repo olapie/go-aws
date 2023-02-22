@@ -1,6 +1,7 @@
 package lambdahttp
 
 import (
+	"code.olapie.com/sugar/v2/httperror"
 	"context"
 	"errors"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"code.olapie.com/sugar/v2/ctxutil"
 	"code.olapie.com/sugar/v2/httpheader"
 	"code.olapie.com/sugar/v2/jsonutil"
-	"code.olapie.com/sugar/v2/xerror"
 	"github.com/aws/aws-lambda-go/events"
 )
 
@@ -71,11 +71,11 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		resp = handler.Handler()(ctx, request)
 		if resp == nil {
-			resp = Error(xerror.NotImplemented("no response from handler"))
+			resp = Error(httperror.NotImplemented("no response from handler"))
 		}
 		return resp
 	}
-	return Error(xerror.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
+	return Error(httperror.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
 }
 
 func Next(ctx context.Context, request *Request) *Response {

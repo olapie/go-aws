@@ -1,13 +1,13 @@
 package sqskit
 
 import (
+	"code.olapie.com/sugar/v2/httperror"
 	"context"
 	"encoding/json"
 	"fmt"
 
 	"code.olapie.com/log"
 	"code.olapie.com/router"
-	"code.olapie.com/sugar/v2/xerror"
 )
 
 type RoutableMessage struct {
@@ -51,5 +51,5 @@ func (c *RoutableMessageConsumer) HandleMessage(ctx context.Context, rawMessage 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		return handler.Handler()(ctx, message.Body)
 	}
-	return xerror.NotFound("endpoint not found")
+	return httperror.NotFound("endpoint not found")
 }

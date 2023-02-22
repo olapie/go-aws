@@ -6,7 +6,7 @@ require (
 	code.olapie.com/log v1.1.6
 	code.olapie.com/router v1.1.0
 	code.olapie.com/sugar/contacts v0.1.2
-	code.olapie.com/sugar/v2 v2.4.2
+	code.olapie.com/sugar/v2 v2.4.4
 	github.com/aws/aws-lambda-go v1.37.0
 	github.com/aws/aws-sdk-go-v2 v1.17.4
 	github.com/aws/aws-sdk-go-v2/config v1.18.12

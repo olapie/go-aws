@@ -12,7 +12,6 @@ import (
 	"code.olapie.com/sugar/v2/maps"
 	"code.olapie.com/sugar/v2/rt"
 	"code.olapie.com/sugar/v2/slices"
-	"code.olapie.com/sugar/v2/xerror"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssigner "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -90,7 +89,7 @@ func (s *S3Bucket) Get(ctx context.Context, key string, optFns ...func(input *s3
 	if err != nil {
 		var noSuchKey *types.NoSuchKey
 		if errors.As(err, &noSuchKey) {
-			return nil, xerror.NotFound("object %s doesn't exist", key)
+			return nil, ErrKeyNotFound
 		}
 		return nil, fmt.Errorf("s3.GetObject: %w", err)
 	}
