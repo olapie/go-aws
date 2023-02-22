@@ -1,7 +1,6 @@
 package lambdahttp
 
 import (
-	"net/http"
 	"testing"
 
 	"code.olapie.com/sugar/v2/jsonutil"
@@ -9,7 +8,7 @@ import (
 )
 
 func TestJSON(t *testing.T) {
-	err := xerror.New(http.StatusBadRequest, "test")
+	err := xerror.BadRequest("test")
 	body := Error(err).Body
 	t.Log(jsonutil.ToString(err))
 	t.Log(body)

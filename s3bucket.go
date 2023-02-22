@@ -3,6 +3,7 @@ package awskit
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -87,8 +88,9 @@ func (s *S3Bucket) Get(ctx context.Context, key string, optFns ...func(input *s3
 
 	output, err := s.client.GetObject(ctx, input)
 	if err != nil {
-		if _, ok := xerror.CauseOf[*types.NoSuchKey](err); ok {
-			return nil, xerror.New(http.StatusNotFound, "object %s doesn't exist", key)
+		var noSuchKey *types.NoSuchKey
+		if errors.As(err, &noSuchKey) {
+			return nil, xerror.NotFound("object %s doesn't exist", key)
 		}
 		return nil, fmt.Errorf("s3.GetObject: %w", err)
 	}
@@ -308,9 +310,10 @@ func (s *S3Bucket) GetHeadObject(ctx context.Context, key string, optFns ...func
 	}
 	output, err := s.client.HeadObject(ctx, input)
 	if err != nil {
-		if apiErr, ok := xerror.CauseOf[smithy.APIError](err); ok {
-			if apiErr.ErrorCode() == s3ErrorNotFound.ErrorCode() {
-				return nil, xerror.New(http.StatusNotFound, "key")
+		var apiError smithy.APIError
+		if errors.As(err, &apiError) {
+			if apiError.ErrorCode() == s3ErrorNotFound.ErrorCode() {
+				return nil, ErrKeyNotFound
 			}
 		}
 		return nil, err

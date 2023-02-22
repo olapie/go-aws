@@ -1,22 +1,21 @@
-package awskit_test
+package awskit
 
 import (
 	"context"
-	"net/http"
+	"errors"
 	"os"
 	"testing"
 	"time"
 
-	"code.olapie.com/awskit"
 	"code.olapie.com/sugar/v2/xerror"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
-func setupS3Bucket(t *testing.T) *awskit.S3Bucket {
+func setupS3Bucket(t *testing.T) *S3Bucket {
 	bucket := os.Getenv("S3_TEST_BUCKET")
 	require.NotEmpty(t, bucket)
-	return awskit.NewS3BucketFromConfig(bucket, loadConfig(t))
+	return NewS3BucketFromConfig(bucket, loadConfig(t))
 }
 
 func TestS3_NotFound(t *testing.T) {
@@ -26,9 +25,9 @@ func TestS3_NotFound(t *testing.T) {
 	id := uuid.NewString()
 	_, err := bucket.GetHeadObject(ctx, id)
 	require.Error(t, err)
-	require.True(t, xerror.IsNotExist(err))
+	require.True(t, errors.Is(err, ErrKeyNotFound))
 	_, err = bucket.Get(ctx, id)
-	require.EqualError(t, err, xerror.New(http.StatusNotFound, "object %s doesn't exist", id).Error())
+	require.EqualError(t, err, xerror.NotFound("object %s doesn't exist", id).Error())
 	err = bucket.Delete(ctx, id)
 	require.NoError(t, err)
 	err = bucket.BatchDelete(ctx, []string{id})
@@ -76,7 +75,7 @@ func TestS3_Put(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = bucket.GetHeadObject(ctx, id)
-	require.True(t, xerror.IsNotExist(err))
+	require.True(t, errors.Is(err, ErrKeyNotFound))
 }
 
 func TestS3_BatchDelete(t *testing.T) {

@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"code.olapie.com/sugar/v2/httpheader"
+
 	"code.olapie.com/log"
 	"code.olapie.com/sugar/v2/ctxutil"
-	"code.olapie.com/sugar/v2/httpkit"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -160,7 +161,7 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		}
 
 		var traceID string
-		if attr, ok := msg.MessageAttributes[httpkit.KeyTraceID]; ok && attr.StringValue != nil {
+		if attr, ok := msg.MessageAttributes[httpheader.KeyTraceID]; ok && attr.StringValue != nil {
 			traceID = *(attr.StringValue)
 		} else {
 			traceID = uuid.NewString()

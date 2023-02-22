@@ -4,12 +4,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"reflect"
 	"strings"
 
+	"code.olapie.com/awskit"
+
 	"code.olapie.com/sugar/v2/jsonutil"
-	"code.olapie.com/sugar/v2/xerror"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"golang.org/x/exp/constraints"
@@ -120,12 +120,12 @@ func (d *PrimaryKeyDefinition[P, S]) DecodeStringToValue(s string) (map[string]t
 	for name, val := range nameToValue {
 		typ, ok := d.Prototype()[name]
 		if !ok {
-			return nil, xerror.New(http.StatusBadRequest, "invalid token")
+			return nil, awskit.ErrInvalidToken
 		}
 		attr := reflect.New(typ)
 		err = json.Unmarshal(jsonutil.ToBytes(val), attr.Interface())
 		if err != nil {
-			return nil, xerror.New(http.StatusBadRequest, "invalid token")
+			return nil, awskit.ErrInvalidToken
 		}
 		key[name] = attr.Elem().Interface().(types.AttributeValue)
 	}

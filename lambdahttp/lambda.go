@@ -1,18 +1,14 @@
 package lambdahttp
 
 import (
-	"bytes"
 	"context"
-	"crypto/ecdsa"
-	"crypto/md5"
 	"errors"
 	"fmt"
-	"net/http"
 
 	"code.olapie.com/log"
 	"code.olapie.com/router"
 	"code.olapie.com/sugar/v2/ctxutil"
-	"code.olapie.com/sugar/v2/httpkit"
+	"code.olapie.com/sugar/v2/httpheader"
 	"code.olapie.com/sugar/v2/jsonutil"
 	"code.olapie.com/sugar/v2/xerror"
 	"github.com/aws/aws-lambda-go/events"
@@ -66,7 +62,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		if resp.Headers == nil {
 			resp.Headers = make(map[string]string)
 		}
-		httpkit.SetTraceID(resp.Headers, ctxutil.GetTraceID(ctx))
+		httpheader.SetTraceID(resp.Headers, ctxutil.GetTraceID(ctx))
 	}()
 
 	endpoint, _ := r.Match(httpInfo.Method, request.RawPath)
@@ -75,40 +71,11 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		resp = handler.Handler()(ctx, request)
 		if resp == nil {
-			resp = Error(xerror.New(http.StatusNotImplemented, "no response from handler"))
+			resp = Error(xerror.NotImplemented("no response from handler"))
 		}
 		return resp
 	}
-	return Error(xerror.New(http.StatusNotFound, "endpoint not found: %s %s", httpInfo.Method, request.RawPath))
-}
-
-func CreateRequestVerifier(pubKey *ecdsa.PublicKey) Func {
-	return func(ctx context.Context, request *Request) *Response {
-		if err := httpkit.CheckTimestamp(request.Headers); err != nil {
-			return Error(err)
-		}
-		sign, err := httpkit.DecodeSign(request.Headers)
-		if err != nil {
-			return Error(err)
-		}
-		hash := getMessageHashForSigning(ctx, request)
-		if ecdsa.VerifyASN1(pubKey, hash[:], sign) {
-			return Next(ctx, request)
-		}
-		return Error(xerror.New(http.StatusNotAcceptable, "invalid signature"))
-	}
-}
-
-func getMessageHashForSigning(ctx context.Context, req *Request) []byte {
-	httpInfo := req.RequestContext.HTTP
-	var buf bytes.Buffer
-	buf.WriteString(httpInfo.Method)
-	buf.WriteString(httpInfo.Path)
-	buf.WriteString(req.RawQueryString)
-	buf.WriteString(httpkit.GetHeader(req.Headers, httpkit.KeyTraceID))
-	buf.WriteString(httpkit.GetHeader(req.Headers, httpkit.KeyTimestamp))
-	hash := md5.Sum(buf.Bytes())
-	return hash[:]
+	return Error(xerror.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
 }
 
 func Next(ctx context.Context, request *Request) *Response {

@@ -1,14 +1,14 @@
 package sqskit
 
 import (
-	"code.olapie.com/sugar/v2/conv"
 	"context"
 	"fmt"
 
 	"code.olapie.com/log"
 	"code.olapie.com/sugar/v2/base62"
+	"code.olapie.com/sugar/v2/conv"
 	"code.olapie.com/sugar/v2/ctxutil"
-	"code.olapie.com/sugar/v2/httpkit"
+	"code.olapie.com/sugar/v2/httpheader"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -21,7 +21,7 @@ func BuildMessageAttributesFromContext(ctx context.Context) map[string]types.Mes
 			DataType:    aws.String("String"),
 			StringValue: aws.String(traceID),
 		}
-		attrs[httpkit.KeyTraceID] = attr
+		attrs[httpheader.KeyTraceID] = attr
 	}
 
 	if login := ctxutil.GetLogin[int64](ctx); login != 0 {
@@ -29,13 +29,13 @@ func BuildMessageAttributesFromContext(ctx context.Context) map[string]types.Mes
 			DataType:    aws.String("Number"),
 			StringValue: aws.String(fmt.Sprint(login)),
 		}
-		attrs[httpkit.KeyUserID] = attr
+		attrs["X-User-Id"] = attr
 	} else if login := ctxutil.GetLogin[string](ctx); login != "" {
 		attr := types.MessageAttributeValue{
 			DataType:    aws.String("String"),
 			StringValue: aws.String(login),
 		}
-		attrs[httpkit.KeyUserID] = attr
+		attrs["X-User-Id"] = attr
 	}
 
 	return attrs
@@ -44,11 +44,11 @@ func BuildMessageAttributesFromContext(ctx context.Context) map[string]types.Mes
 func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]events.SQSMessageAttribute) context.Context {
 	var traceID string
 	if len(attrs) != 0 {
-		if attr, ok := attrs[httpkit.KeyTraceID]; ok && attr.StringValue != nil {
+		if attr, ok := attrs[httpheader.KeyTraceID]; ok && attr.StringValue != nil {
 			traceID = *attr.StringValue
 		}
 
-		if attr, ok := attrs[httpkit.KeyUserID]; ok && attr.StringValue != nil {
+		if attr, ok := attrs["X-User-Id"]; ok && attr.StringValue != nil {
 			if attr.DataType == "String" {
 				ctx = ctxutil.WithLogin(ctx, *attr.StringValue)
 			} else {

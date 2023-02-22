@@ -1,4 +1,4 @@
-package awskit_test
+package awskit
 
 import (
 	"context"

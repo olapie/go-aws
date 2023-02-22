@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"reflect"
 
+	"code.olapie.com/awskit"
+
 	"code.olapie.com/sugar/v2/rt"
 	"code.olapie.com/sugar/v2/slices"
-	"code.olapie.com/sugar/v2/xerror"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
@@ -98,7 +99,7 @@ func (t *Table[E, P, S]) BatchPut(ctx context.Context, items []E) error {
 		t.tableName: requests,
 	}}
 	_, err = t.client.BatchWriteItem(ctx, input)
-	return xerror.Wrapf(err, "dynamodb.BatchWriteItem")
+	return err
 }
 
 func (t *Table[E, P, S]) BatchGet(ctx context.Context, partitionKeys []P, sortKeys []S) ([]E, error) {
@@ -146,7 +147,7 @@ func (t *Table[E, P, S]) Get(ctx context.Context, partitionKey P, sortKey S) (E,
 	}
 
 	if output.Item == nil {
-		return item, xerror.NotExist
+		return item, awskit.ErrItemNotFound
 	}
 
 	err = attributevalue.UnmarshalMap(output.Item, &item)
@@ -274,7 +275,7 @@ func (t *Table[E, P, S]) QueryFirstOne(ctx context.Context, partition P, sortKey
 		return item, err
 	}
 	if len(items) == 0 {
-		return item, xerror.NotExist
+		return item, awskit.ErrItemNotFound
 	}
 	return items[0], nil
 }
@@ -287,7 +288,7 @@ func (t *Table[E, P, S]) QueryLastOne(ctx context.Context, partition P, sortKey 
 		return item, err
 	}
 	if len(items) == 0 {
-		return item, xerror.NotExist
+		return item, awskit.ErrItemNotFound
 	}
 	return items[0], nil
 }
@@ -346,7 +347,7 @@ func (t *Table[E, P, S]) put(ctx context.Context, item E, conditionExpression *s
 		ConditionExpression:    conditionExpression,
 	}
 	_, err = t.client.PutItem(ctx, input)
-	return xerror.Wrapf(err, "dynamodb.PutItem")
+	return err
 }
 
 func (t *Table[E, P, S]) prepareTransactPut(ctx context.Context, puts []E, conditionExpression *string) ([]types.TransactWriteItem, error) {
