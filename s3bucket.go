@@ -75,12 +75,13 @@ func (s *S3Bucket) Put(ctx context.Context, key string, content []byte, metadata
 	return rt.Dereference(output.ETag), nil
 }
 
-func (s *S3Bucket) UploadPart(ctx context.Context, key, uploadID string, part int, optFns ...func(*s3.UploadPartInput)) (*s3.UploadPartOutput, error) {
+func (s *S3Bucket) UploadPart(ctx context.Context, key, uploadID string, part int, content []byte, optFns ...func(*s3.UploadPartInput)) (*s3.UploadPartOutput, error) {
 	input := &s3.UploadPartInput{
 		Bucket:     aws.String(s.bucket),
 		Key:        aws.String(key),
 		PartNumber: int32(part),
 		UploadId:   aws.String(uploadID),
+		Body:       bytes.NewBuffer(content),
 	}
 	for _, fn := range optFns {
 		fn(input)
