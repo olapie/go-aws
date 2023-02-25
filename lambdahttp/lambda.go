@@ -1,10 +1,11 @@
 package lambdahttp
 
 import (
-	"code.olapie.com/sugar/v2/httperror"
 	"context"
 	"errors"
 	"fmt"
+
+	"code.olapie.com/sugar/v2/httperror"
 
 	"code.olapie.com/log"
 	"code.olapie.com/router"

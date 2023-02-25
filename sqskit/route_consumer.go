@@ -1,10 +1,11 @@
 package sqskit
 
 import (
-	"code.olapie.com/sugar/v2/httperror"
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"code.olapie.com/sugar/v2/httperror"
 
 	"code.olapie.com/log"
 	"code.olapie.com/router"
