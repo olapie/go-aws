@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
@@ -14,7 +15,8 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 	apigatewayv2alpha "github.com/aws/aws-cdk-go/awscdkapigatewayv2alpha/v2"
 	apigatewayv2integrationsalpha "github.com/aws/aws-cdk-go/awscdkapigatewayv2integrationsalpha/v2"
-	"go.olapie.com/sugar/v2/naming"
+	"github.com/aws/constructs-go/constructs/v10"
+	"go.olapie.com/utils"
 )
 
 const (
@@ -74,7 +76,7 @@ func (e *Env) GetFullName(baseName string) string {
 }
 
 func (e *Env) GetResourceName(typ, baseName string) string {
-	return naming.ToClassName(e.GetFullName(baseName)) + typ
+	return utils.ToClassName(e.GetFullName(baseName)) + typ
 }
 
 type DomainConfig struct {
@@ -86,7 +88,7 @@ type FunctionProps = awslambda.FunctionProps
 
 func NewARecord(scope constructs.Construct, hostedZone string, certificateArn, subDomain string) (ARecord, DomainName) {
 	domainName := newDomainName(scope, hostedZone, certificateArn, subDomain)
-	zoneCDKName := naming.ToClassName(hostedZone) + naming.ToClassName(subDomain) + "Zone"
+	zoneCDKName := utils.ToClassName(hostedZone) + utils.ToClassName(subDomain) + "Zone"
 	zone := awsroute53.HostedZone_FromLookup(scope, utils.Addr(zoneCDKName), &awsroute53.HostedZoneProviderProps{
 		DomainName: utils.Addr(hostedZone),
 	})
@@ -95,7 +97,7 @@ func NewARecord(scope constructs.Construct, hostedZone string, certificateArn, s
 		domainName.RegionalDomainName(),
 		domainName.RegionalHostedZoneId())
 
-	record := awsroute53.NewARecord(scope, utils.Addr(naming.ToClassName(subDomain)+"ARecord"), &awsroute53.ARecordProps{
+	record := awsroute53.NewARecord(scope, utils.Addr(utils.ToClassName(subDomain)+"ARecord"), &awsroute53.ARecordProps{
 		Zone:           zone,
 		Comment:        nil,
 		DeleteExisting: utils.Addr(true),
@@ -109,7 +111,7 @@ func NewARecord(scope constructs.Construct, hostedZone string, certificateArn, s
 func NewFunction(scope constructs.Construct, env *Env, name string, props *FunctionProps) awslambda.Function {
 	funcName := env.GetFullName(name)
 	handlerName := env.Service + "-" + name
-	cdkName := naming.ToClassName(funcName) + "LambdaFunction"
+	cdkName := utils.ToClassName(funcName) + "LambdaFunction"
 	if props == nil {
 		props = &FunctionProps{}
 	}
@@ -153,7 +155,7 @@ type HttpApiEndpoint struct {
 }
 
 func NewHttpApi(scope constructs.Construct, name string, domainName DomainName, endpoints []HttpApiEndpoint) HttpApi {
-	cdkName := naming.ToClassName(name)
+	cdkName := utils.ToClassName(name)
 	var routes []*apigatewayv2alpha.AddRoutesOptions
 	funcToIntegration := make(map[Function]HttpLambdaIntegration)
 	var defaultIntegration HttpLambdaIntegration
@@ -194,7 +196,7 @@ func NewHttpApi(scope constructs.Construct, name string, domainName DomainName, 
 
 func NewQueue(scope constructs.Construct, env *Env, name string, props *QueueProps) Queue {
 	name = env.GetFullName(name)
-	cdkName := naming.ToClassName(name)
+	cdkName := utils.ToClassName(name)
 	if props == nil {
 		props = new(QueueProps)
 	}
@@ -227,7 +229,7 @@ func NewQueue(scope constructs.Construct, env *Env, name string, props *QueuePro
 }
 
 func NewBucket(scope constructs.Construct, name string) Bucket {
-	cdkName := naming.ToClassName(name) + "Bucket"
+	cdkName := utils.ToClassName(name) + "Bucket"
 	return awss3.NewBucket(scope, utils.Addr(cdkName), &awss3.BucketProps{
 		AutoDeleteObjects: utils.Addr(false),
 		BucketName:        utils.Addr(name),
@@ -237,7 +239,7 @@ func NewBucket(scope constructs.Construct, name string) Bucket {
 }
 
 func newFunctionRole(scope constructs.Construct, env *Env, funcFullName string) awsiam.Role {
-	cdkName := naming.ToClassName(funcFullName) + "Role"
+	cdkName := utils.ToClassName(funcFullName) + "Role"
 	role := awsiam.NewRole(scope, utils.Addr(cdkName), &awsiam.RoleProps{
 		RoleName:  utils.Addr(cdkName),
 		AssumedBy: awsiam.NewServicePrincipal(utils.Addr(IAMServiceLambda), nil),
@@ -258,7 +260,7 @@ func newFunctionRole(scope constructs.Construct, env *Env, funcFullName string) 
 }
 
 func newDomainName(scope constructs.Construct, hostedZone, certificateArn, subDomain string) DomainName {
-	cdkName := naming.ToClassName(subDomain)
+	cdkName := utils.ToClassName(subDomain)
 	certificate := awscertificatemanager.Certificate_FromCertificateArn(scope,
 		utils.Addr(cdkName+"Certificate"),
 		utils.Addr(certificateArn),
