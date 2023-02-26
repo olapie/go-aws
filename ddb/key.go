@@ -7,10 +7,9 @@ import (
 	"reflect"
 	"strings"
 
-	"go.olapie.com/awskit"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	goaws "go.olapie.com/aws"
 	"golang.org/x/exp/constraints"
 )
 
@@ -119,13 +118,13 @@ func (d *PrimaryKeyDefinition[P, S]) DecodeStringToValue(s string) (map[string]t
 	for name, val := range nameToValue {
 		typ, ok := d.Prototype()[name]
 		if !ok {
-			return nil, awskit.ErrInvalidToken
+			return nil, goaws.ErrInvalidToken
 		}
 		attr := reflect.New(typ)
 		jsonData, _ := json.Marshal(val)
 		err = json.Unmarshal(jsonData, attr.Interface())
 		if err != nil {
-			return nil, awskit.ErrInvalidToken
+			return nil, goaws.ErrInvalidToken
 		}
 		key[name] = attr.Elem().Interface().(types.AttributeValue)
 	}

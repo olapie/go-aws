@@ -1,4 +1,4 @@
-package awskit
+package aws
 
 type ErrorString string
 

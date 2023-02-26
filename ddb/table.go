@@ -6,13 +6,12 @@ import (
 	"go.olapie.com/utils"
 	"reflect"
 
-	"go.olapie.com/awskit"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	goaws "go.olapie.com/aws"
 )
 
 type TableOption[E any, P PartitionKeyConstraint, S SortKeyConstraint] func(t *Table[E, P, S])
@@ -143,7 +142,7 @@ func (t *Table[E, P, S]) Get(ctx context.Context, partitionKey P, sortKey S) (E,
 	}
 
 	if output.Item == nil {
-		return item, awskit.ErrItemNotFound
+		return item, goaws.ErrItemNotFound
 	}
 
 	err = attributevalue.UnmarshalMap(output.Item, &item)
@@ -271,7 +270,7 @@ func (t *Table[E, P, S]) QueryFirstOne(ctx context.Context, partition P, sortKey
 		return item, err
 	}
 	if len(items) == 0 {
-		return item, awskit.ErrItemNotFound
+		return item, goaws.ErrItemNotFound
 	}
 	return items[0], nil
 }
@@ -284,7 +283,7 @@ func (t *Table[E, P, S]) QueryLastOne(ctx context.Context, partition P, sortKey 
 		return item, err
 	}
 	if len(items) == 0 {
-		return item, awskit.ErrItemNotFound
+		return item, goaws.ErrItemNotFound
 	}
 	return items[0], nil
 }

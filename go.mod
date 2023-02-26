@@ -1,4 +1,4 @@
-module go.olapie.com/awskit
+module go.olapie.com/aws
 
 go 1.20
 
