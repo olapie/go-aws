@@ -1,4 +1,4 @@
-module code.olapie.com/awskit/cdk
+module go.olapie.com/awskit/cdk
 
 go 1.20
 

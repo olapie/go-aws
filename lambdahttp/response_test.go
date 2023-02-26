@@ -1,16 +1,14 @@
 package lambdahttp
 
 import (
+	"go.olapie.com/rpcx/http"
 	"testing"
-
-	"code.olapie.com/sugar/v2/jsonutil"
-	"code.olapie.com/sugar/v2/xerror"
 )
 
 func TestJSON(t *testing.T) {
-	err := xerror.BadRequest("test")
+	err := http.BadRequest("test")
 	body := Error(err).Body
-	t.Log(jsonutil.ToString(err))
+	t.Log(err)
 	t.Log(body)
 	t.Log(body[0:1])
 }

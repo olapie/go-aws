@@ -4,15 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.olapie.com/utils"
 
-	"code.olapie.com/sugar/v2/httperror"
-
-	"code.olapie.com/log"
-	"code.olapie.com/router"
-	"code.olapie.com/sugar/v2/ctxutil"
-	"code.olapie.com/sugar/v2/httpheader"
-	"code.olapie.com/sugar/v2/jsonutil"
 	"github.com/aws/aws-lambda-go/events"
+	"go.olapie.com/log"
+	"go.olapie.com/router"
+	"go.olapie.com/rpcx/http"
 )
 
 type Request = events.APIGatewayV2HTTPRequest
@@ -34,7 +31,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 	httpInfo := request.RequestContext.HTTP
 	logger := log.FromContext(ctx)
 	logger.Info("Start",
-		log.String("header", jsonutil.ToString(request.Headers)),
+		log.Any("header", request.Headers),
 		log.String("path", request.RawPath),
 		log.String("query", request.RawQueryString),
 		log.String("method", httpInfo.Method),
@@ -63,7 +60,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		if resp.Headers == nil {
 			resp.Headers = make(map[string]string)
 		}
-		httpheader.SetTraceID(resp.Headers, ctxutil.GetTraceID(ctx))
+		http.SetTraceID(resp.Headers, utils.GetTraceID(ctx))
 	}()
 
 	endpoint, _ := r.Match(httpInfo.Method, request.RawPath)
@@ -72,11 +69,11 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		resp = handler.Handler()(ctx, request)
 		if resp == nil {
-			resp = Error(httperror.NotImplemented("no response from handler"))
+			resp = Error(http.NotImplemented("no response from handler"))
 		}
 		return resp
 	}
-	return Error(httperror.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
+	return Error(http.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
 }
 
 func Next(ctx context.Context, request *Request) *Response {

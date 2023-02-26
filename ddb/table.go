@@ -3,12 +3,11 @@ package ddb
 import (
 	"context"
 	"fmt"
+	"go.olapie.com/utils"
 	"reflect"
 
-	"code.olapie.com/awskit"
+	"go.olapie.com/awskit"
 
-	"code.olapie.com/sugar/v2/rt"
-	"code.olapie.com/sugar/v2/slices"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
@@ -54,7 +53,7 @@ func NewTable[E any, P PartitionKeyConstraint, S SortKeyConstraint](
 	}
 
 	var elem E
-	attrs, err := attributevalue.MarshalMap(rt.DeepNew(reflect.TypeOf(elem)).Elem().Interface())
+	attrs, err := attributevalue.MarshalMap(utils.DeepNew(reflect.TypeOf(elem)).Elem().Interface())
 	if err != nil {
 		panic(err)
 	}
@@ -81,24 +80,21 @@ func (t *Table[E, P, S]) Put(ctx context.Context, item E) error {
 }
 
 func (t *Table[E, P, S]) BatchPut(ctx context.Context, items []E) error {
-	requests, err := slices.Transform(items, func(item E) (types.WriteRequest, error) {
+	requests := make([]types.WriteRequest, len(items))
+	for i, item := range items {
 		var req types.WriteRequest
 		attrs, err := attributevalue.MarshalMap(item)
 		if err != nil {
-			return req, fmt.Errorf("attributevalue.MarshalMap: %w", err)
+			return fmt.Errorf("attributevalue.MarshalMap: %w", err)
 		}
 		req.PutRequest = &types.PutRequest{Item: attrs}
-		return req, nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("convert items to WriteRequest list: %w", err)
+		requests[i] = req
 	}
 
 	input := &dynamodb.BatchWriteItemInput{RequestItems: map[string][]types.WriteRequest{
 		t.tableName: requests,
 	}}
-	_, err = t.client.BatchWriteItem(ctx, input)
+	_, err := t.client.BatchWriteItem(ctx, input)
 	return err
 }
 
@@ -299,7 +295,10 @@ func (t *Table[E, P, S]) createQueryInput(partition P, sortKey *S, limit int32) 
 		sortKeyCond := expression.Key(t.pkDefinition.sortKeyName).Equal(expression.Value(*sortKey))
 		keyCond = keyCond.And(sortKeyCond)
 	}
-	cols := slices.MustTransform(t.columns, expression.Name)
+	cols := make([]expression.NameBuilder, len(t.columns))
+	for i, v := range t.columns {
+		cols[i] = expression.Name(v)
+	}
 	proj := expression.NamesList(cols[0], cols[1:]...)
 	expr, err := expression.NewBuilder().WithKeyCondition(keyCond).WithProjection(proj).Build()
 	if err != nil {
@@ -320,13 +319,14 @@ func (t *Table[E, P, S]) createQueryInput(partition P, sortKey *S, limit int32) 
 }
 
 func (t *Table[E, P, S]) batchDelete(ctx context.Context, pks []*PrimaryKey[P, S]) error {
-	requests := slices.MustTransform(pks, func(pk *PrimaryKey[P, S]) types.WriteRequest {
-		return types.WriteRequest{
+	requests := make([]types.WriteRequest, len(pks))
+	for i, pk := range pks {
+		requests[i] = types.WriteRequest{
 			DeleteRequest: &types.DeleteRequest{
 				Key: pk.AttributeValue(),
 			},
 		}
-	})
+	}
 
 	input := &dynamodb.BatchWriteItemInput{RequestItems: map[string][]types.WriteRequest{
 		t.tableName: requests,

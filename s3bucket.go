@@ -5,13 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.olapie.com/utils"
 	"io"
 	"net/http"
 	"time"
 
-	"code.olapie.com/sugar/v2/maps"
-	"code.olapie.com/sugar/v2/rt"
-	"code.olapie.com/sugar/v2/slices"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssigner "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -72,7 +70,7 @@ func (s *S3Bucket) Put(ctx context.Context, key string, content []byte, metadata
 	if err != nil {
 		return "", err
 	}
-	return rt.Dereference(output.ETag), nil
+	return utils.Dereference(output.ETag), nil
 }
 
 func (s *S3Bucket) UploadPart(ctx context.Context, key, uploadID string, part int, content []byte, optFns ...func(*s3.UploadPartInput)) (*s3.UploadPartOutput, error) {
@@ -150,7 +148,7 @@ func (s *S3Bucket) CompleteMultipartUpload(ctx context.Context, key, uploadID st
 	if err != nil {
 		return "", err
 	}
-	return rt.Dereference(output.ETag), nil
+	return utils.Dereference(output.ETag), nil
 }
 
 func (s *S3Bucket) AbortMultipartUpload(ctx context.Context, key, uploadID string, optFns ...func(*s3.AbortMultipartUploadInput)) error {
@@ -269,14 +267,17 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string, optFns ...func
 		return nil
 	}
 
+	objects := make([]types.ObjectIdentifier, len(ids))
+	for i, id := range ids {
+		objects[i] = types.ObjectIdentifier{
+			Key: aws.String(id),
+		}
+	}
+
 	input := &s3.DeleteObjectsInput{
 		Bucket: aws.String(s.bucket),
 		Delete: &types.Delete{
-			Objects: slices.MustTransform(ids, func(key string) types.ObjectIdentifier {
-				return types.ObjectIdentifier{
-					Key: aws.String(key),
-				}
-			}),
+			Objects: objects,
 		},
 	}
 
@@ -294,12 +295,12 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string, optFns ...func
 	}
 
 	if len(output.Deleted) != len(ids) {
-		idSet := slices.ToSet(ids)
+		idSet := utils.SliceToSet(ids)
 		for _, del := range output.Deleted {
 			delete(idSet, *del.Key)
 		}
 		if len(idSet) != 0 {
-			return fmt.Errorf("some ids cannot be deleted: %v", maps.GetKeys(idSet))
+			return fmt.Errorf("some ids cannot be deleted: %v", utils.GetMapKeys(idSet))
 		}
 	}
 

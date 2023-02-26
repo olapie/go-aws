@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"code.olapie.com/sugar/v2/httperror"
-
-	"code.olapie.com/log"
-	"code.olapie.com/router"
+	"go.olapie.com/log"
+	"go.olapie.com/router"
+	"go.olapie.com/rpcx/http"
 )
 
 type RoutableMessage struct {
@@ -52,5 +51,5 @@ func (c *RoutableMessageConsumer) HandleMessage(ctx context.Context, rawMessage 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		return handler.Handler()(ctx, message.Body)
 	}
-	return httperror.NotFound("endpoint not found")
+	return http.NotFound("endpoint not found")
 }

@@ -7,9 +7,8 @@ import (
 	"reflect"
 	"strings"
 
-	"code.olapie.com/awskit"
+	"go.olapie.com/awskit"
 
-	"code.olapie.com/sugar/v2/jsonutil"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"golang.org/x/exp/constraints"
@@ -123,7 +122,8 @@ func (d *PrimaryKeyDefinition[P, S]) DecodeStringToValue(s string) (map[string]t
 			return nil, awskit.ErrInvalidToken
 		}
 		attr := reflect.New(typ)
-		err = json.Unmarshal(jsonutil.ToBytes(val), attr.Interface())
+		jsonData, _ := json.Marshal(val)
+		err = json.Unmarshal(jsonData, attr.Interface())
 		if err != nil {
 			return nil, awskit.ErrInvalidToken
 		}
@@ -134,7 +134,8 @@ func (d *PrimaryKeyDefinition[P, S]) DecodeStringToValue(s string) (map[string]t
 }
 
 func (d *PrimaryKeyDefinition[P, S]) EncodeValueToString(v map[string]types.AttributeValue) string {
-	return base64.StdEncoding.EncodeToString(jsonutil.ToBytes(v))
+	data, _ := json.Marshal(v)
+	return base64.StdEncoding.EncodeToString(data)
 }
 
 type PrimaryKey[P PartitionKeyConstraint, S SortKeyConstraint] struct {

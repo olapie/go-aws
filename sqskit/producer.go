@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"code.olapie.com/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"go.olapie.com/log"
 )
 
 // SendMessageAPI defines the interface for the GetQueueUrl and SendMessage functions.

@@ -3,11 +3,11 @@ package awskit
 import (
 	"context"
 	"errors"
+	"go.olapie.com/rpcx/http"
 	"os"
 	"testing"
 	"time"
 
-	"code.olapie.com/sugar/v2/xerror"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +27,7 @@ func TestS3_NotFound(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, errors.Is(err, ErrKeyNotFound))
 	_, err = bucket.Get(ctx, id)
-	require.EqualError(t, err, xerror.NotFound("object %s doesn't exist", id).Error())
+	require.EqualError(t, err, http.NotFound("object %s doesn't exist", id).Error())
 	err = bucket.Delete(ctx, id)
 	require.NoError(t, err)
 	err = bucket.BatchDelete(ctx, []string{id})

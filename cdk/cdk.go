@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"code.olapie.com/sugar/v2/naming"
-	"code.olapie.com/sugar/v2/rt"
-	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
@@ -17,7 +14,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 	apigatewayv2alpha "github.com/aws/aws-cdk-go/awscdkapigatewayv2alpha/v2"
 	apigatewayv2integrationsalpha "github.com/aws/aws-cdk-go/awscdkapigatewayv2integrationsalpha/v2"
-	"github.com/aws/constructs-go/constructs/v10"
+	"go.olapie.com/sugar/v2/naming"
 )
 
 const (
@@ -90,19 +87,19 @@ type FunctionProps = awslambda.FunctionProps
 func NewARecord(scope constructs.Construct, hostedZone string, certificateArn, subDomain string) (ARecord, DomainName) {
 	domainName := newDomainName(scope, hostedZone, certificateArn, subDomain)
 	zoneCDKName := naming.ToClassName(hostedZone) + naming.ToClassName(subDomain) + "Zone"
-	zone := awsroute53.HostedZone_FromLookup(scope, rt.Addr(zoneCDKName), &awsroute53.HostedZoneProviderProps{
-		DomainName: rt.Addr(hostedZone),
+	zone := awsroute53.HostedZone_FromLookup(scope, utils.Addr(zoneCDKName), &awsroute53.HostedZoneProviderProps{
+		DomainName: utils.Addr(hostedZone),
 	})
 
 	domainProperties := awsroute53targets.NewApiGatewayv2DomainProperties(
 		domainName.RegionalDomainName(),
 		domainName.RegionalHostedZoneId())
 
-	record := awsroute53.NewARecord(scope, rt.Addr(naming.ToClassName(subDomain)+"ARecord"), &awsroute53.ARecordProps{
+	record := awsroute53.NewARecord(scope, utils.Addr(naming.ToClassName(subDomain)+"ARecord"), &awsroute53.ARecordProps{
 		Zone:           zone,
 		Comment:        nil,
-		DeleteExisting: rt.Addr(true),
-		RecordName:     rt.Addr(subDomain + "." + hostedZone),
+		DeleteExisting: utils.Addr(true),
+		RecordName:     utils.Addr(subDomain + "." + hostedZone),
 		Ttl:            nil,
 		Target:         awsroute53.RecordTarget_FromAlias(domainProperties),
 	})
@@ -118,7 +115,7 @@ func NewFunction(scope constructs.Construct, env *Env, name string, props *Funct
 	}
 
 	if props.FunctionName == nil {
-		props.FunctionName = rt.Addr(funcName)
+		props.FunctionName = utils.Addr(funcName)
 	}
 
 	if props.LogRetention == "" {
@@ -126,15 +123,15 @@ func NewFunction(scope constructs.Construct, env *Env, name string, props *Funct
 	}
 
 	if props.MemorySize == nil {
-		props.MemorySize = rt.Addr(400.0)
+		props.MemorySize = utils.Addr(400.0)
 	}
 
 	if props.Timeout == nil {
-		props.Timeout = awscdk.Duration_Seconds(rt.Addr(30.0))
+		props.Timeout = awscdk.Duration_Seconds(utils.Addr(30.0))
 	}
 
 	if props.Handler == nil {
-		props.Handler = rt.Addr(handlerName)
+		props.Handler = utils.Addr(handlerName)
 	}
 
 	if props.Role == nil {
@@ -142,7 +139,7 @@ func NewFunction(scope constructs.Construct, env *Env, name string, props *Funct
 	}
 
 	props.Runtime = awslambda.Runtime_GO_1_X()
-	return awslambda.NewFunction(scope, rt.Addr(cdkName), props)
+	return awslambda.NewFunction(scope, utils.Addr(cdkName), props)
 }
 
 type HttpApiEndpoint struct {
@@ -163,7 +160,7 @@ func NewHttpApi(scope constructs.Construct, name string, domainName DomainName, 
 	for _, e := range endpoints {
 		integration := funcToIntegration[e.Function]
 		if integration == nil {
-			integration = apigatewayv2integrationsalpha.NewHttpLambdaIntegration(rt.Addr(
+			integration = apigatewayv2integrationsalpha.NewHttpLambdaIntegration(utils.Addr(
 				e.FunctionName+cdkName+"HttpLambdaIntegration"),
 				e.Function,
 				&apigatewayv2integrationsalpha.HttpLambdaIntegrationProps{})
@@ -176,13 +173,13 @@ func NewHttpApi(scope constructs.Construct, name string, domainName DomainName, 
 		}
 		routes = append(routes, &apigatewayv2alpha.AddRoutesOptions{
 			Integration: integration,
-			Path:        rt.Addr(e.Path),
-			Methods:     rt.Addr(e.Methods),
+			Path:        utils.Addr(e.Path),
+			Methods:     utils.Addr(e.Methods),
 		})
 	}
 
-	httpApi := apigatewayv2alpha.NewHttpApi(scope, rt.Addr(cdkName+"HttpApi"), &apigatewayv2alpha.HttpApiProps{
-		ApiName: rt.Addr(name),
+	httpApi := apigatewayv2alpha.NewHttpApi(scope, utils.Addr(cdkName+"HttpApi"), &apigatewayv2alpha.HttpApiProps{
+		ApiName: utils.Addr(name),
 		DefaultDomainMapping: &apigatewayv2alpha.DomainMappingOptions{
 			DomainName: domainName,
 		},
@@ -202,60 +199,60 @@ func NewQueue(scope constructs.Construct, env *Env, name string, props *QueuePro
 		props = new(QueueProps)
 	}
 	if props.MaxMessageSizeBytes == nil {
-		props.MaxMessageSizeBytes = rt.Addr(float64(64 * 1024))
+		props.MaxMessageSizeBytes = utils.Addr(float64(64 * 1024))
 	}
 	if props.QueueName == nil {
-		props.QueueName = rt.Addr(name)
+		props.QueueName = utils.Addr(name)
 	}
 	if props.RetentionPeriod == nil {
-		props.RetentionPeriod = awscdk.Duration_Hours(rt.Addr(2.0))
+		props.RetentionPeriod = awscdk.Duration_Hours(utils.Addr(2.0))
 	}
 
 	if props.VisibilityTimeout == nil {
-		props.VisibilityTimeout = awscdk.Duration_Seconds(rt.Addr(30.0))
+		props.VisibilityTimeout = awscdk.Duration_Seconds(utils.Addr(30.0))
 	}
 
-	dlq := awssqs.NewQueue(scope, rt.Addr(cdkName+"DeadLetterQueue"), &QueueProps{
+	dlq := awssqs.NewQueue(scope, utils.Addr(cdkName+"DeadLetterQueue"), &QueueProps{
 		MaxMessageSizeBytes:    props.MaxMessageSizeBytes,
-		QueueName:              rt.Addr(*props.QueueName + "-dlq"),
+		QueueName:              utils.Addr(*props.QueueName + "-dlq"),
 		ReceiveMessageWaitTime: nil,
-		RetentionPeriod:        awscdk.Duration_Days(rt.Addr(3.0)),
+		RetentionPeriod:        awscdk.Duration_Days(utils.Addr(3.0)),
 		VisibilityTimeout:      props.VisibilityTimeout,
 	})
 	props.DeadLetterQueue = &awssqs.DeadLetterQueue{
-		MaxReceiveCount: rt.Addr(3.0),
+		MaxReceiveCount: utils.Addr(3.0),
 		Queue:           dlq,
 	}
-	return awssqs.NewQueue(scope, rt.Addr(cdkName+"Queue"), props)
+	return awssqs.NewQueue(scope, utils.Addr(cdkName+"Queue"), props)
 }
 
 func NewBucket(scope constructs.Construct, name string) Bucket {
 	cdkName := naming.ToClassName(name) + "Bucket"
-	return awss3.NewBucket(scope, rt.Addr(cdkName), &awss3.BucketProps{
-		AutoDeleteObjects: rt.Addr(false),
-		BucketName:        rt.Addr(name),
-		Versioned:         rt.Addr(true),
+	return awss3.NewBucket(scope, utils.Addr(cdkName), &awss3.BucketProps{
+		AutoDeleteObjects: utils.Addr(false),
+		BucketName:        utils.Addr(name),
+		Versioned:         utils.Addr(true),
 		RemovalPolicy:     awscdk.RemovalPolicy_RETAIN,
 	})
 }
 
 func newFunctionRole(scope constructs.Construct, env *Env, funcFullName string) awsiam.Role {
 	cdkName := naming.ToClassName(funcFullName) + "Role"
-	role := awsiam.NewRole(scope, rt.Addr(cdkName), &awsiam.RoleProps{
-		RoleName:  rt.Addr(cdkName),
-		AssumedBy: awsiam.NewServicePrincipal(rt.Addr(IAMServiceLambda), nil),
+	role := awsiam.NewRole(scope, utils.Addr(cdkName), &awsiam.RoleProps{
+		RoleName:  utils.Addr(cdkName),
+		AssumedBy: awsiam.NewServicePrincipal(utils.Addr(IAMServiceLambda), nil),
 	})
 	role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-		Actions: rt.Addr([]*string{rt.Addr(IAMActionCreateLogStream), rt.Addr(IAMActionPutLogEvents)}),
+		Actions: utils.Addr([]*string{utils.Addr(IAMActionCreateLogStream), utils.Addr(IAMActionPutLogEvents)}),
 		Effect:  awsiam.Effect_ALLOW,
-		Resources: rt.Addr([]*string{rt.Addr(fmt.Sprintf("arn:aws:logs:%s:%s:log-group:/aws/lambda/%s:*",
+		Resources: utils.Addr([]*string{utils.Addr(fmt.Sprintf("arn:aws:logs:%s:%s:log-group:/aws/lambda/%s:*",
 			env.Region, env.Account, funcFullName))}),
 	}))
 
 	role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-		Actions:   rt.Addr([]*string{rt.Addr(IAMActionCreateLogGroup)}),
+		Actions:   utils.Addr([]*string{utils.Addr(IAMActionCreateLogGroup)}),
 		Effect:    awsiam.Effect_ALLOW,
-		Resources: rt.Addr([]*string{rt.Addr(fmt.Sprintf("arn:aws:logs:%s:%s:*", env.Region, env.Account))}),
+		Resources: utils.Addr([]*string{utils.Addr(fmt.Sprintf("arn:aws:logs:%s:%s:*", env.Region, env.Account))}),
 	}))
 	return role
 }
@@ -263,12 +260,12 @@ func newFunctionRole(scope constructs.Construct, env *Env, funcFullName string) 
 func newDomainName(scope constructs.Construct, hostedZone, certificateArn, subDomain string) DomainName {
 	cdkName := naming.ToClassName(subDomain)
 	certificate := awscertificatemanager.Certificate_FromCertificateArn(scope,
-		rt.Addr(cdkName+"Certificate"),
-		rt.Addr(certificateArn),
+		utils.Addr(cdkName+"Certificate"),
+		utils.Addr(certificateArn),
 	)
 
-	return apigatewayv2alpha.NewDomainName(scope, rt.Addr(cdkName+"DomainName"), &DomainNameProps{
+	return apigatewayv2alpha.NewDomainName(scope, utils.Addr(cdkName+"DomainName"), &DomainNameProps{
 		Certificate: certificate,
-		DomainName:  rt.Addr(subDomain + "." + hostedZone),
+		DomainName:  utils.Addr(subDomain + "." + hostedZone),
 	})
 }

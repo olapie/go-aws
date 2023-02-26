@@ -4,16 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.olapie.com/rpcx/http"
+	"go.olapie.com/utils"
 	"time"
 
-	"code.olapie.com/sugar/v2/httpheader"
-
-	"code.olapie.com/log"
-	"code.olapie.com/sugar/v2/ctxutil"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/google/uuid"
+	"go.olapie.com/log"
 )
 
 const MaxVisibilityTimeout = 60 * 60 // one hour
@@ -161,12 +160,12 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		}
 
 		var traceID string
-		if attr, ok := msg.MessageAttributes[httpheader.KeyTraceID]; ok && attr.StringValue != nil {
+		if attr, ok := msg.MessageAttributes[http.KeyTraceID]; ok && attr.StringValue != nil {
 			traceID = *(attr.StringValue)
 		} else {
 			traceID = uuid.NewString()
 		}
-		ctx = ctxutil.Request(ctx).WithTraceID(traceID).Build()
+		ctx = utils.NewRequestContextBuilder(ctx).WithTraceID(traceID).Build()
 		msgLogger := logger.With(log.String("trace_id", traceID))
 		msgLogger.Info("START", log.String("message_id", msgID))
 
