@@ -3,7 +3,6 @@ package ddb
 import (
 	"context"
 	"fmt"
-	"go.olapie.com/utils"
 	"reflect"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	goaws "go.olapie.com/aws"
+	"go.olapie.com/utils"
 )
 
 type TableOption[E any, P PartitionKeyConstraint, S SortKeyConstraint] func(t *Table[E, P, S])

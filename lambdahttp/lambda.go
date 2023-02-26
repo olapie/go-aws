@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.olapie.com/utils"
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.olapie.com/log"
 	"go.olapie.com/router"
 	"go.olapie.com/rpcx/http"
+	"go.olapie.com/utils"
 )
 
 type Request = events.APIGatewayV2HTTPRequest
