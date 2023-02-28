@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go.olapie.com/rpcx/httpx"
+	"go.olapie.com/types"
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.olapie.com/log"
@@ -69,11 +70,11 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		resp = handler.Handler()(ctx, request)
 		if resp == nil {
-			resp = Error(httpx.NotImplemented("no response from handler"))
+			resp = Error(types.NotImplemented("no response from handler"))
 		}
 		return resp
 	}
-	return Error(httpx.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
+	return Error(types.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
 }
 
 func Next(ctx context.Context, request *Request) *Response {
