@@ -3,7 +3,7 @@ package aws
 import (
 	"context"
 	"errors"
-	"go.olapie.com/rpcx/http"
+	httpx "go.olapie.com/rpcx/httpx"
 	"os"
 	"testing"
 	"time"
@@ -27,7 +27,7 @@ func TestS3_NotFound(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, errors.Is(err, ErrKeyNotFound))
 	_, err = bucket.Get(ctx, id)
-	require.EqualError(t, err, http.NotFound("object %s doesn't exist", id).Error())
+	require.EqualError(t, err, httpx.NotFound("object %s doesn't exist", id).Error())
 	err = bucket.Delete(ctx, id)
 	require.NoError(t, err)
 	err = bucket.BatchDelete(ctx, []string{id})

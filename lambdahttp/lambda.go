@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.olapie.com/rpcx/httpx"
 
 	"github.com/aws/aws-lambda-go/events"
 	"go.olapie.com/log"
 	"go.olapie.com/router"
-	"go.olapie.com/rpcx/http"
 	"go.olapie.com/utils"
 )
 
@@ -60,7 +60,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		if resp.Headers == nil {
 			resp.Headers = make(map[string]string)
 		}
-		http.SetTraceID(resp.Headers, utils.GetTraceID(ctx))
+		httpx.SetTraceID(resp.Headers, utils.GetTraceID(ctx))
 	}()
 
 	endpoint, _ := r.Match(httpInfo.Method, request.RawPath)
@@ -69,11 +69,11 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		resp = handler.Handler()(ctx, request)
 		if resp == nil {
-			resp = Error(http.NotImplemented("no response from handler"))
+			resp = Error(httpx.NotImplemented("no response from handler"))
 		}
 		return resp
 	}
-	return Error(http.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
+	return Error(httpx.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
 }
 
 func Next(ctx context.Context, request *Request) *Response {

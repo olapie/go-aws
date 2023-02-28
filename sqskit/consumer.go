@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.olapie.com/rpcx/http"
+	"go.olapie.com/rpcx/httpx"
 	"go.olapie.com/utils"
 	"time"
 
@@ -160,7 +160,7 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		}
 
 		var traceID string
-		if attr, ok := msg.MessageAttributes[http.KeyTraceID]; ok && attr.StringValue != nil {
+		if attr, ok := msg.MessageAttributes[httpx.KeyTraceID]; ok && attr.StringValue != nil {
 			traceID = *(attr.StringValue)
 		} else {
 			traceID = uuid.NewString()

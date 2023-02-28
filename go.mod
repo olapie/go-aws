@@ -18,9 +18,9 @@ require (
 	github.com/stretchr/testify v1.8.1
 	go.olapie.com/log v1.1.8
 	go.olapie.com/router v1.1.2
-	go.olapie.com/rpcx/http v0.1.2
+	go.olapie.com/rpcx/httpx v0.2.6
 	go.olapie.com/security v0.1.1
-	go.olapie.com/utils v0.1.8
+	go.olapie.com/utils v0.1.14
 	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb
 )
 
@@ -46,7 +46,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/natefinch/lumberjack/v3 v3.0.0-alpha // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	go.olapie.com/rpcx v0.1.2 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect

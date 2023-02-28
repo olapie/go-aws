@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
 	"go.olapie.com/log"
-	httpx "go.olapie.com/rpcx/http"
+	httpx "go.olapie.com/rpcx/httpx"
 	"go.olapie.com/utils"
 	"net/http"
 )
@@ -26,7 +26,7 @@ func OK() *Response {
 func Status(s int) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.Plain
+	resp.Headers[httpx.KeyContentType] = httpx.MimePlain
 	resp.StatusCode = s
 	resp.Body = http.StatusText(s)
 	return resp
@@ -61,7 +61,7 @@ func JSON(status int, v any) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.JSON
+	resp.Headers[httpx.KeyContentType] = httpx.MimeJSON
 	body, _ := json.Marshal(v)
 	resp.Body = string(body)
 	return resp
@@ -75,7 +75,7 @@ func CSS(status int, cssText string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.CSS
+	resp.Headers[httpx.KeyContentType] = httpx.MimeCSS
 	resp.Body = cssText
 	return resp
 }
@@ -95,7 +95,7 @@ func HTML(status int, htmlText string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.HtmlUTF8
+	resp.Headers[httpx.KeyContentType] = httpx.MimeHtmlUTF8
 	resp.Body = htmlText
 	return resp
 }
@@ -111,7 +111,7 @@ func Text(status int, text string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.Plain
+	resp.Headers[httpx.KeyContentType] = httpx.MimePlain
 	resp.Body = text
 	return resp
 }

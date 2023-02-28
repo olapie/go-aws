@@ -3,13 +3,13 @@ package sqskit
 import (
 	"context"
 	"fmt"
+	"go.olapie.com/rpcx/httpx"
 	"go.olapie.com/utils"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"go.olapie.com/log"
-	"go.olapie.com/rpcx/http"
 	"go.olapie.com/security/base62"
 )
 
@@ -20,7 +20,7 @@ func BuildMessageAttributesFromContext(ctx context.Context) map[string]types.Mes
 			DataType:    aws.String("String"),
 			StringValue: aws.String(traceID),
 		}
-		attrs[http.KeyTraceID] = attr
+		attrs[httpx.KeyTraceID] = attr
 	}
 
 	if login := utils.GetLogin[int64](ctx); login != 0 {
@@ -43,7 +43,7 @@ func BuildMessageAttributesFromContext(ctx context.Context) map[string]types.Mes
 func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]events.SQSMessageAttribute) context.Context {
 	var traceID string
 	if len(attrs) != 0 {
-		if attr, ok := attrs[http.KeyTraceID]; ok && attr.StringValue != nil {
+		if attr, ok := attrs[httpx.KeyTraceID]; ok && attr.StringValue != nil {
 			traceID = *attr.StringValue
 		}
 

@@ -7,7 +7,7 @@ import (
 
 	"go.olapie.com/log"
 	"go.olapie.com/router"
-	"go.olapie.com/rpcx/http"
+	"go.olapie.com/rpcx/httpx"
 )
 
 type RoutableMessage struct {
@@ -51,5 +51,5 @@ func (c *RoutableMessageConsumer) HandleMessage(ctx context.Context, rawMessage 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		return handler.Handler()(ctx, message.Body)
 	}
-	return http.NotFound("endpoint not found")
+	return httpx.NotFound("endpoint not found")
 }
