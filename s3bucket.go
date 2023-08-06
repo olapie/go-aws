@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"go.olapie.com/utils"
 	"io"
+	"maps"
 	"net/http"
 	"time"
 
@@ -300,7 +301,7 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string, optFns ...func
 			delete(idSet, *del.Key)
 		}
 		if len(idSet) != 0 {
-			return fmt.Errorf("some ids cannot be deleted: %v", utils.GetMapKeys(idSet))
+			return fmt.Errorf("some ids cannot be deleted: %v", maps.Keys(idSet))
 		}
 	}
 
