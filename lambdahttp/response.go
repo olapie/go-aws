@@ -3,14 +3,15 @@ package lambdahttp
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
+	"net/http"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
 	"go.olapie.com/logs"
 	"go.olapie.com/ola/activity"
 	"go.olapie.com/ola/errorutil"
 	"go.olapie.com/ola/headers"
-	"log/slog"
-	"net/http"
 )
 
 func Error(err error) *Response {

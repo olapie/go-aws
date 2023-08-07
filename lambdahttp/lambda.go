@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+
 	"github.com/aws/aws-lambda-go/events"
 	"go.olapie.com/logs"
 	"go.olapie.com/ola/activity"
 	"go.olapie.com/ola/headers"
 	"go.olapie.com/router"
 	"go.olapie.com/types"
-	"log/slog"
 )
 
 type Request = events.APIGatewayV2HTTPRequest

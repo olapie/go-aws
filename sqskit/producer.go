@@ -3,8 +3,9 @@ package sqskit
 import (
 	"context"
 	"errors"
-	"go.olapie.com/logs"
 	"time"
+
+	"go.olapie.com/logs"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"

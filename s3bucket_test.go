@@ -3,10 +3,11 @@ package aws
 import (
 	"context"
 	"errors"
-	"go.olapie.com/ola/errorutil"
 	"os"
 	"testing"
 	"time"
+
+	"go.olapie.com/ola/errorutil"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

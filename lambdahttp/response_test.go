@@ -1,8 +1,9 @@
 package lambdahttp
 
 import (
-	"go.olapie.com/ola/errorutil"
 	"testing"
+
+	"go.olapie.com/ola/errorutil"
 )
 
 func TestJSON(t *testing.T) {

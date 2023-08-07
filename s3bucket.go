@@ -5,11 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.olapie.com/utils"
 	"io"
 	"maps"
 	"net/http"
 	"time"
+
+	"go.olapie.com/utils"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssigner "github.com/aws/aws-sdk-go-v2/aws/signer/v4"

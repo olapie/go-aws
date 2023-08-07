@@ -3,6 +3,9 @@ package sqskit
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"net/http"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -11,8 +14,6 @@ import (
 	"go.olapie.com/ola/headers"
 	"go.olapie.com/security/base62"
 	"go.olapie.com/utils"
-	"log/slog"
-	"net/http"
 )
 
 const (

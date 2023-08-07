@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+
 	"go.olapie.com/logs"
 	"go.olapie.com/router"
 	"go.olapie.com/types"
-	"log/slog"
 )
 
 type RoutableMessage struct {
