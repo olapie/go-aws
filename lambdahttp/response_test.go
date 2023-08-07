@@ -1,12 +1,12 @@
 package lambdahttp
 
 import (
-	"go.olapie.com/rpcx/httpx"
+	"go.olapie.com/ola/errorutil"
 	"testing"
 )
 
 func TestJSON(t *testing.T) {
-	err := httpx.BadRequest("test")
+	err := errorutil.BadRequest("test")
 	body := Error(err).Body
 	t.Log(err)
 	t.Log(body)

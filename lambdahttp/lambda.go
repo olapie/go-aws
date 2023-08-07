@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.olapie.com/rpcx/httpx"
-	"go.olapie.com/types"
-
 	"github.com/aws/aws-lambda-go/events"
-	"go.olapie.com/log"
+	"go.olapie.com/logs"
+	"go.olapie.com/ola/activity"
+	"go.olapie.com/ola/headers"
 	"go.olapie.com/router"
-	"go.olapie.com/utils"
+	"go.olapie.com/types"
+	"log/slog"
 )
 
 type Request = events.APIGatewayV2HTTPRequest
@@ -30,29 +30,29 @@ func NewRouter() *Router {
 func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) {
 	ctx = BuildContext(ctx, request)
 	httpInfo := request.RequestContext.HTTP
-	logger := log.FromContext(ctx)
+	logger := logs.FromCtx(ctx)
 	logger.Info("Start",
-		log.Any("header", request.Headers),
-		log.String("path", request.RawPath),
-		log.String("query", request.RawQueryString),
-		log.String("method", httpInfo.Method),
-		log.String("user_agent", httpInfo.UserAgent),
-		log.String("source_ip", httpInfo.SourceIP),
+		slog.Any("header", request.Headers),
+		slog.String("path", request.RawPath),
+		slog.String("query", request.RawQueryString),
+		slog.String("method", httpInfo.Method),
+		slog.String("user_agent", httpInfo.UserAgent),
+		slog.String("source_ip", httpInfo.SourceIP),
 	)
 
 	defer func() {
 		if msg := recover(); msg != nil {
-			logger.Error("Panic", log.Any("error", msg))
+			logger.Error("Panic", slog.Any("error", msg))
 			resp = Error(errors.New(fmt.Sprint(msg)))
 			return
 		}
 
-		logger := log.FromContext(ctx).With(log.Int("status_code", resp.StatusCode))
+		logger := logs.FromCtx(ctx).With(slog.Int("status_code", resp.StatusCode))
 		if resp.StatusCode < 400 {
 			logger.Info("End")
 		} else {
 			if len(resp.Body) < 1024 {
-				logger.Error("End", log.String("body", resp.Body))
+				logger.Error("End", slog.String("body", resp.Body))
 			} else {
 				logger.Error("End")
 			}
@@ -61,7 +61,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		if resp.Headers == nil {
 			resp.Headers = make(map[string]string)
 		}
-		httpx.SetTraceID(resp.Headers, utils.GetTraceID(ctx))
+		resp.Headers[headers.KeyTraceID] = activity.FromIncomingContext(ctx).Get(headers.KeyTraceID)
 	}()
 
 	endpoint, _ := r.Match(httpInfo.Method, request.RawPath)

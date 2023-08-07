@@ -3,11 +3,11 @@ module go.olapie.com/aws/cdk
 go 1.20
 
 require (
-	code.olapie.com/sugar/v2 v2.3.10
 	github.com/aws/aws-cdk-go/awscdk/v2 v2.64.0
 	github.com/aws/aws-cdk-go/awscdkapigatewayv2alpha/v2 v2.64.0-alpha.0
 	github.com/aws/aws-cdk-go/awscdkapigatewayv2integrationsalpha/v2 v2.64.0-alpha.0
 	github.com/aws/constructs-go/constructs/v10 v10.1.251
+	go.olapie.com/utils v0.1.10
 )
 
 require (
@@ -18,7 +18,6 @@ require (
 	github.com/cdklabs/awscdk-asset-node-proxy-agent-go/nodeproxyagentv5/v2 v2.0.57 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	go.olapie.com/utils v0.1.10 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/term v0.5.0 // indirect

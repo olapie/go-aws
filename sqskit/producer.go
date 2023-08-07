@@ -3,11 +3,11 @@ package sqskit
 import (
 	"context"
 	"errors"
+	"go.olapie.com/logs"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"go.olapie.com/log"
 )
 
 // SendMessageAPI defines the interface for the GetQueueUrl and SendMessage functions.
@@ -51,7 +51,7 @@ func (c *MessageProducer) getQueueURL(ctx context.Context, retries int) {
 			c.queueURL = output.QueueUrl
 			break
 		}
-		log.FromContext(ctx).Error("get queue url", log.Err(err))
+		logs.FromCtx(ctx).Error("get queue url", logs.Err(err))
 	}
 }
 
@@ -64,7 +64,7 @@ func (c *MessageProducer) SendDelayMessage(ctx context.Context, message string, 
 		MessageBody:       aws.String(message),
 		QueueUrl:          c.queueURL,
 		DelaySeconds:      delaySeconds,
-		MessageAttributes: BuildMessageAttributesFromContext(ctx),
+		MessageAttributes: createMessageAttributesFromOutgoingContext(ctx),
 	}
 
 	output, err := c.api.SendMessage(ctx, input)

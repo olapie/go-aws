@@ -3,55 +3,74 @@ package sqskit
 import (
 	"context"
 	"fmt"
-	"go.olapie.com/rpcx/httpx"
-	"go.olapie.com/utils"
-
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"go.olapie.com/log"
+	"go.olapie.com/logs"
+	"go.olapie.com/ola/activity"
+	"go.olapie.com/ola/headers"
 	"go.olapie.com/security/base62"
+	"go.olapie.com/utils"
+	"log/slog"
+	"net/http"
 )
 
-func BuildMessageAttributesFromContext(ctx context.Context) map[string]types.MessageAttributeValue {
+const (
+	keyUserID      = "X-User-Id"
+	DataTypeString = "String"
+	DataTypeNumber = "Number"
+)
+
+func createMessageAttributesFromOutgoingContext(ctx context.Context) map[string]types.MessageAttributeValue {
 	attrs := make(map[string]types.MessageAttributeValue)
-	if traceID := utils.GetTraceID(ctx); traceID != "" {
-		attr := types.MessageAttributeValue{
-			DataType:    aws.String("String"),
-			StringValue: aws.String(traceID),
-		}
-		attrs[httpx.KeyTraceID] = attr
+	a := activity.FromOutgoingContext(ctx)
+	if a == nil {
+		logs.FromCtx(ctx).ErrorContext(ctx, "no activity in outgoing context")
+		return attrs
 	}
 
-	if login := utils.GetLogin[int64](ctx); login != 0 {
+	if traceID := a.Get(headers.KeyTraceID); traceID != "" {
 		attr := types.MessageAttributeValue{
-			DataType:    aws.String("Number"),
+			DataType:    aws.String(DataTypeString),
+			StringValue: aws.String(traceID),
+		}
+		attrs[headers.KeyTraceID] = attr
+	}
+
+	if login, _ := a.UserID().Int(); login != 0 {
+		attr := types.MessageAttributeValue{
+			DataType:    aws.String(DataTypeNumber),
 			StringValue: aws.String(fmt.Sprint(login)),
 		}
-		attrs["X-User-Id"] = attr
-	} else if login := utils.GetLogin[string](ctx); login != "" {
+		attrs[keyUserID] = attr
+	} else if login, _ := a.UserID().String(); login != "" {
 		attr := types.MessageAttributeValue{
-			DataType:    aws.String("String"),
+			DataType:    aws.String(DataTypeString),
 			StringValue: aws.String(login),
 		}
-		attrs["X-User-Id"] = attr
+		attrs[keyUserID] = attr
 	}
 
 	return attrs
 }
 
-func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]events.SQSMessageAttribute) context.Context {
+func NewIncomingContextFromMessageAttributes(ctx context.Context, attrs map[string]events.SQSMessageAttribute) context.Context {
+	a := activity.FromIncomingContext(ctx)
+	if a == nil {
+		a = activity.New("", http.Header{})
+		ctx = activity.NewIncomingContext(ctx, a)
+	}
 	var traceID string
 	if len(attrs) != 0 {
-		if attr, ok := attrs[httpx.KeyTraceID]; ok && attr.StringValue != nil {
+		if attr, ok := attrs[headers.KeyTraceID]; ok && attr.StringValue != nil {
 			traceID = *attr.StringValue
 		}
 
-		if attr, ok := attrs["X-User-Id"]; ok && attr.StringValue != nil {
-			if attr.DataType == "String" {
-				ctx = utils.WithLogin(ctx, *attr.StringValue)
+		if attr, ok := attrs[keyUserID]; ok && attr.StringValue != nil {
+			if attr.DataType == DataTypeString {
+				_ = activity.SetIncomingUserID(ctx, *attr.StringValue)
 			} else {
-				ctx = utils.WithLogin(ctx, utils.MustToInt64(*attr.StringValue))
+				_ = activity.SetIncomingUserID(ctx, utils.MustToInt64(*attr.StringValue))
 			}
 		}
 	}
@@ -59,9 +78,8 @@ func BuildContextFromMessageAttributes(ctx context.Context, attrs map[string]eve
 	if traceID == "" {
 		traceID = base62.NewUUIDString()
 	}
-
-	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
-	ctx = utils.NewRequestContextBuilder(ctx).WithTraceID(traceID).Build()
-	ctx = log.BuildContext(ctx, logger)
+	a.Set(headers.KeyTraceID, traceID)
+	logger := logs.FromCtx(ctx).With(slog.String("trace_id", traceID))
+	ctx = logs.NewCtx(ctx, logger)
 	return ctx
 }

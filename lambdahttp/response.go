@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
-	"go.olapie.com/log"
-	httpx "go.olapie.com/rpcx/httpx"
-	"go.olapie.com/utils"
+	"go.olapie.com/logs"
+	"go.olapie.com/ola/activity"
+	"go.olapie.com/ola/errorutil"
+	"go.olapie.com/ola/headers"
+	"log/slog"
 	"net/http"
 )
 
@@ -16,7 +18,7 @@ func Error(err error) *Response {
 		return OK()
 	}
 
-	return JSON(utils.GetErrorCode(err), err.Error())
+	return JSON(errorutil.GetCode(err), err.Error())
 }
 
 func OK() *Response {
@@ -26,7 +28,7 @@ func OK() *Response {
 func Status(s int) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.MimePlain
+	resp.Headers[headers.KeyContentType] = headers.MimePlain
 	resp.StatusCode = s
 	resp.Body = http.StatusText(s)
 	return resp
@@ -61,7 +63,7 @@ func JSON(status int, v any) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.MimeJSON
+	resp.Headers[headers.KeyContentType] = headers.MimeJSON
 	body, _ := json.Marshal(v)
 	resp.Body = string(body)
 	return resp
@@ -75,7 +77,7 @@ func CSS(status int, cssText string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.MimeCSS
+	resp.Headers[headers.KeyContentType] = headers.MimeCSS
 	resp.Body = cssText
 	return resp
 }
@@ -95,7 +97,7 @@ func HTML(status int, htmlText string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.MimeHtmlUTF8
+	resp.Headers[headers.KeyContentType] = headers.MimeHtmlUTF8
 	resp.Body = htmlText
 	return resp
 }
@@ -111,7 +113,7 @@ func Text(status int, text string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyContentType] = httpx.MimePlain
+	resp.Headers[headers.KeyContentType] = headers.MimePlain
 	resp.Body = text
 	return resp
 }
@@ -124,22 +126,24 @@ func Redirect(permanent bool, location string) *Response {
 		resp.StatusCode = http.StatusFound
 	}
 	resp.Headers = make(map[string]string)
-	resp.Headers[httpx.KeyLocation] = location
+	resp.Headers[headers.KeyLocation] = location
 	return resp
 }
 
 func BuildContext(ctx context.Context, request *Request) context.Context {
-	traceID := httpx.GetHeader(request.Headers, httpx.KeyTraceID)
-	if traceID == "" {
-		traceID = uuid.NewString()
+	header := make(http.Header, len(request.Headers))
+	for k, v := range request.Headers {
+		header.Set(k, v)
 	}
 
-	ctx = utils.NewRequestContextBuilder(ctx).WithAppID(httpx.GetHeader(request.Headers, httpx.KeyAppID)).
-		WithClientID(httpx.GetHeader(request.Headers, httpx.KeyClientID)).
-		WithServiceID(httpx.GetHeader(request.Headers, httpx.KeyAppID)).
-		WithTraceID(traceID).Build()
+	traceID := headers.Get(header, headers.KeyTraceID)
+	if traceID == "" {
+		traceID = uuid.NewString()
+		header.Set(headers.KeyTraceID, traceID)
+	}
 
-	logger := log.FromContext(ctx).With(log.String("trace_id", traceID))
-	ctx = log.BuildContext(ctx, logger)
+	ctx = activity.NewIncomingContext(ctx, activity.New("", header))
+	logger := logs.FromCtx(ctx).With(slog.String("trace_id", traceID))
+	ctx = logs.NewCtx(ctx, logger)
 	return ctx
 }

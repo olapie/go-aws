@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.olapie.com/rpcx/httpx"
-	"go.olapie.com/utils"
+	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/google/uuid"
-	"go.olapie.com/log"
+	"go.olapie.com/logs"
+	"go.olapie.com/ola/activity"
+	"go.olapie.com/ola/headers"
 )
 
 const MaxVisibilityTimeout = 60 * 60 // one hour
@@ -93,8 +95,8 @@ func NewMessageConsumer(queueName string, api ReceiveMessageAPI, handler Message
 // Start starts consumer message loop
 // If it's a service, ctx must never time out
 func (c *MessageConsumer) Start(ctx context.Context) {
-	logger := log.FromContext(ctx).With(log.String("queue_name", c.queueName))
-	ctx = log.BuildContext(ctx, logger)
+	logger := logs.FromCtx(ctx).With(slog.String("queue_name", c.queueName))
+	ctx = logs.NewCtx(ctx, logger)
 	c.getQueueURL(ctx, 10)
 	if c.queueURL == nil {
 		logger.Info("Stopping consumer due to no queue url")
@@ -114,12 +116,12 @@ func (c *MessageConsumer) Start(ctx context.Context) {
 	for {
 		err := c.receiveMessage(ctx, input)
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			logger.Error("receive sqs message", log.Err(err))
+			logger.Error("receive sqs message", logs.Err(err))
 			return
 		}
 
 		if err != nil {
-			logger.Error("receive sqs message", log.Err(err))
+			logger.Error("receive sqs message", logs.Err(err))
 			backoff += 100 * time.Millisecond
 			time.Sleep(backoff)
 		}
@@ -139,19 +141,19 @@ func (c *MessageConsumer) getQueueURL(ctx context.Context, retries int) {
 			c.queueURL = output.QueueUrl
 			break
 		}
-		log.FromContext(ctx).Error("get queue url", log.Err(err))
+		logs.FromCtx(ctx).Error("get queue url", logs.Err(err))
 	}
 }
 
 func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.ReceiveMessageInput) error {
 	output, err := c.api.ReceiveMessage(ctx, input)
-	logger := log.FromContext(ctx)
+	logger := logs.FromCtx(ctx)
 	if err != nil {
-		logger.Error("ReceiveMessage", log.Err(err))
+		logger.Error("ReceiveMessage", logs.Err(err))
 		return err
 	}
 
-	logger.Sugar().Errorf("Received %d messages\n", len(output.Messages))
+	logger.Info(fmt.Sprintf("Received %d messages\n", len(output.Messages)))
 
 	for _, msg := range output.Messages {
 		var msgID string
@@ -160,14 +162,16 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		}
 
 		var traceID string
-		if attr, ok := msg.MessageAttributes[httpx.KeyTraceID]; ok && attr.StringValue != nil {
+		if attr, ok := msg.MessageAttributes[headers.KeyTraceID]; ok && attr.StringValue != nil {
 			traceID = *(attr.StringValue)
 		} else {
 			traceID = uuid.NewString()
 		}
-		ctx = utils.NewRequestContextBuilder(ctx).WithTraceID(traceID).Build()
-		msgLogger := logger.With(log.String("trace_id", traceID))
-		msgLogger.Info("START", log.String("message_id", msgID))
+		a := activity.New("", http.Header{})
+		ctx = activity.NewIncomingContext(ctx, a)
+		a.Set(headers.KeyTraceID, traceID)
+		msgLogger := logger.With(slog.String("trace_id", traceID))
+		msgLogger.Info("START", slog.String("message_id", msgID))
 
 		if msg.Body == nil || *msg.Body == "" {
 			msgLogger.Warn("empty message")
@@ -175,7 +179,7 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		}
 
 		if err = c.handler.HandleMessage(ctx, *msg.Body); err != nil {
-			msgLogger.Error("handler.HandleMessage", log.Err(err))
+			msgLogger.Error("handler.HandleMessage", logs.Err(err))
 			continue
 		}
 
@@ -187,7 +191,7 @@ func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.Receive
 		})
 
 		if err != nil {
-			msgLogger.Warn("delete message", log.Err(err))
+			msgLogger.Warn("delete message", logs.Err(err))
 		}
 	}
 	return nil

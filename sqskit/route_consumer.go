@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go.olapie.com/types"
-
-	"go.olapie.com/log"
+	"go.olapie.com/logs"
 	"go.olapie.com/router"
+	"go.olapie.com/types"
+	"log/slog"
 )
 
 type RoutableMessage struct {
@@ -40,10 +40,10 @@ func (c *RoutableMessageConsumer) HandleMessage(ctx context.Context, rawMessage 
 		return fmt.Errorf("unmarshal to routable message: %w", err)
 	}
 
-	logger := log.FromContext(ctx)
+	logger := logs.FromCtx(ctx)
 	logger.Info("START",
-		log.String("method", message.Method),
-		log.String("path", message.Path))
+		slog.String("method", message.Method),
+		slog.String("path", message.Path))
 
 	endpoint, _ := c.Match(message.Method, message.Path)
 	if endpoint != nil {
