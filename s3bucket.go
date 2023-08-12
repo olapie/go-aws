@@ -6,17 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
 	"time"
-
-	"go.olapie.com/utils"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssigner "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
+	"go.olapie.com/utils"
 )
 
 const (
@@ -302,7 +300,7 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string, optFns ...func
 			delete(idSet, *del.Key)
 		}
 		if len(idSet) != 0 {
-			return fmt.Errorf("some ids cannot be deleted: %v", maps.Keys(idSet))
+			return fmt.Errorf("some ids cannot be deleted: %v", idSet)
 		}
 	}
 
