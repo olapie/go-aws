@@ -25,7 +25,7 @@ type Router struct {
 	authenticate func(ctx context.Context, headers map[string]string) types.UserID
 }
 
-func NewRouter(verifyAPIKey func(header map[string]string) bool, authenticate func(ctx context.Context, headers map[string]string) types.UserID) *Router {
+func NewRouter(verifyAPIKey func(ctx context.Context, header map[string]string) bool, authenticate func(ctx context.Context, headers map[string]string) types.UserID) *Router {
 	return &Router{
 		Router:       router.New[Func](),
 		verifyAPIKey: verifyAPIKey,
@@ -70,7 +70,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		resp.Headers[headers.KeyTraceID] = activity.FromIncomingContext(ctx).GetTraceID()
 	}()
 
-	if r.verifyAPIKey != nil && !r.verifyAPIKey(request.Headers) {
+	if r.verifyAPIKey != nil && !r.verifyAPIKey(ctx, request.Headers) {
 		return Error(errorutil.BadRequest("invalid api key"))
 	}
 
