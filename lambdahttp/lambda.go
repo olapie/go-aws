@@ -21,7 +21,7 @@ type Func = router.HandlerFunc[*Request, *Response]
 
 type Router struct {
 	*router.Router[Func]
-	verifyAPIKey func(header map[string]string) bool
+	verifyAPIKey func(ctx context.Context, header map[string]string) bool
 	authenticate func(ctx context.Context, headers map[string]string) types.UserID
 }
 
