@@ -95,7 +95,7 @@ func NewMessageConsumer(queueName string, api ReceiveMessageAPI, handler Message
 // Start starts consumer message loop
 // If it's a service, ctx must never time out
 func (c *MessageConsumer) Start(ctx context.Context) {
-	logger := logs.FromCtx(ctx).With(slog.String("queue_name", c.queueName))
+	logger := logs.FromContext(ctx).With(slog.String("queue_name", c.queueName))
 	ctx = logs.NewCtx(ctx, logger)
 	c.getQueueURL(ctx, 10)
 	if c.queueURL == nil {
@@ -141,13 +141,13 @@ func (c *MessageConsumer) getQueueURL(ctx context.Context, retries int) {
 			c.queueURL = output.QueueUrl
 			break
 		}
-		logs.FromCtx(ctx).Error("get queue url", logs.Err(err))
+		logs.FromContext(ctx).Error("get queue url", logs.Err(err))
 	}
 }
 
 func (c *MessageConsumer) receiveMessage(ctx context.Context, input *sqs.ReceiveMessageInput) error {
 	output, err := c.api.ReceiveMessage(ctx, input)
-	logger := logs.FromCtx(ctx)
+	logger := logs.FromContext(ctx)
 	if err != nil {
 		logger.Error("ReceiveMessage", logs.Err(err))
 		return err

@@ -52,7 +52,7 @@ func (c *MessageProducer) getQueueURL(ctx context.Context, retries int) {
 			c.queueURL = output.QueueUrl
 			break
 		}
-		logs.FromCtx(ctx).Error("get queue url", logs.Err(err))
+		logs.FromContext(ctx).Error("get queue url", logs.Err(err))
 	}
 }
 

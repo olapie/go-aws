@@ -3,6 +3,7 @@ package lambdahttp
 import (
 	"context"
 	"encoding/json"
+	"go.olapie.com/ola/mimetypes"
 	"log/slog"
 	"net/http"
 
@@ -29,7 +30,7 @@ func OK() *Response {
 func Status(s int) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.Headers = make(map[string]string)
-	resp.Headers[headers.KeyContentType] = headers.MimePlain
+	headers.SetContentType(resp.Headers, mimetypes.Plain)
 	resp.StatusCode = s
 	resp.Body = http.StatusText(s)
 	return resp
@@ -64,7 +65,7 @@ func JSON(status int, v any) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[headers.KeyContentType] = headers.MimeJSON
+	headers.SetContentType(resp.Headers, mimetypes.JSON)
 	body, _ := json.Marshal(v)
 	resp.Body = string(body)
 	return resp
@@ -78,7 +79,7 @@ func CSS(status int, cssText string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[headers.KeyContentType] = headers.MimeCSS
+	headers.SetContentType(resp.Headers, mimetypes.CSS)
 	resp.Body = cssText
 	return resp
 }
@@ -98,7 +99,7 @@ func HTML(status int, htmlText string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[headers.KeyContentType] = headers.MimeHtmlUTF8
+	headers.SetContentType(resp.Headers, mimetypes.HtmlUTF8)
 	resp.Body = htmlText
 	return resp
 }
@@ -114,7 +115,7 @@ func Text(status int, text string) *Response {
 	resp := new(events.APIGatewayV2HTTPResponse)
 	resp.StatusCode = status
 	resp.Headers = make(map[string]string)
-	resp.Headers[headers.KeyContentType] = headers.MimePlain
+	headers.SetContentType(resp.Headers, mimetypes.Plain)
 	resp.Body = text
 	return resp
 }
@@ -131,20 +132,15 @@ func Redirect(permanent bool, location string) *Response {
 	return resp
 }
 
-func BuildContext(ctx context.Context, request *Request) context.Context {
-	header := make(http.Header, len(request.Headers))
-	for k, v := range request.Headers {
-		header.Set(k, v)
-	}
-
-	traceID := headers.Get(header, headers.KeyTraceID)
+func buildContext(ctx context.Context, request *Request) context.Context {
+	a := activity.New("", request.Headers)
+	ctx = activity.NewIncomingContext(ctx, a)
+	traceID := a.GetTraceID()
 	if traceID == "" {
 		traceID = uuid.NewString()
-		header.Set(headers.KeyTraceID, traceID)
+		a.SetTraceID(traceID)
 	}
-
-	ctx = activity.NewIncomingContext(ctx, activity.New("", header))
-	logger := logs.FromCtx(ctx).With(slog.String("trace_id", traceID))
-	ctx = logs.NewCtx(ctx, logger)
+	logger := logs.FromContext(ctx).With(slog.String("trace_id", traceID))
+	ctx = logs.NewContext(ctx, logger)
 	return ctx
 }

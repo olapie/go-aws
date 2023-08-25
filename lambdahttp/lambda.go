@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"go.olapie.com/logs"
 	"go.olapie.com/ola/activity"
+	"go.olapie.com/ola/errorutil"
 	"go.olapie.com/ola/headers"
 	"go.olapie.com/router"
 	"go.olapie.com/types"
@@ -20,6 +21,8 @@ type Func = router.HandlerFunc[*Request, *Response]
 
 type Router struct {
 	*router.Router[Func]
+	verifyAPIKey func(header map[string]string) bool
+	authenticate func(ctx context.Context, accessToken string) (int64, error)
 }
 
 func NewRouter() *Router {
@@ -29,10 +32,10 @@ func NewRouter() *Router {
 }
 
 func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) {
-	ctx = BuildContext(ctx, request)
+	ctx = buildContext(ctx, request)
 	httpInfo := request.RequestContext.HTTP
-	logger := logs.FromCtx(ctx)
-	logger.Info("Start",
+	logger := logs.FromContext(ctx)
+	logger.Info("START",
 		slog.Any("header", request.Headers),
 		slog.String("path", request.RawPath),
 		slog.String("query", request.RawQueryString),
@@ -43,27 +46,51 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 
 	defer func() {
 		if msg := recover(); msg != nil {
-			logger.Error("Panic", slog.Any("error", msg))
+			logger.Error("PANIC", slog.Any("error", msg))
 			resp = Error(errors.New(fmt.Sprint(msg)))
 			return
 		}
 
-		logger := logs.FromCtx(ctx).With(slog.Int("status_code", resp.StatusCode))
+		logger = logs.FromContext(ctx).With(slog.Int("status_code", resp.StatusCode))
 		if resp.StatusCode < 400 {
 			logger.Info("End")
 		} else {
 			if len(resp.Body) < 1024 {
-				logger.Error("End", slog.String("body", resp.Body))
+				logger.Error("END", slog.String("body", resp.Body))
 			} else {
-				logger.Error("End")
+				logger.Error("END")
 			}
 		}
 
 		if resp.Headers == nil {
 			resp.Headers = make(map[string]string)
 		}
-		resp.Headers[headers.KeyTraceID] = activity.FromIncomingContext(ctx).Get(headers.KeyTraceID)
+		resp.Headers[headers.KeyTraceID] = activity.FromIncomingContext(ctx).GetTraceID()
 	}()
+
+	if r.verifyAPIKey != nil && !r.verifyAPIKey(request.Headers) {
+		return Error(errorutil.BadRequest("invalid api key"))
+	}
+
+	if r.authenticate != nil {
+		accessToken := headers.GetBearer(request.Headers)
+		if accessToken == "" {
+			accessToken = headers.GetAuthorization(request.Headers)
+		}
+		if accessToken == "" {
+			logger.Warn("missing access token")
+		} else {
+			uid, err := r.authenticate(ctx, accessToken)
+			if err != nil {
+				Error(errorutil.Unauthorized(err.Error()))
+			}
+
+			if uid > 0 {
+				_ = activity.SetIncomingUserID(ctx, uid)
+				logger.Info("authenticated", slog.Int64("uid", uid))
+			}
+		}
+	}
 
 	endpoint, _ := r.Match(httpInfo.Method, request.RawPath)
 	if endpoint != nil {

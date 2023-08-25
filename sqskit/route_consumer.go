@@ -41,7 +41,7 @@ func (c *RoutableMessageConsumer) HandleMessage(ctx context.Context, rawMessage 
 		return fmt.Errorf("unmarshal to routable message: %w", err)
 	}
 
-	logger := logs.FromCtx(ctx)
+	logger := logs.FromContext(ctx)
 	logger.Info("START",
 		slog.String("method", message.Method),
 		slog.String("path", message.Path))

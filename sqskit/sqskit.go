@@ -26,7 +26,7 @@ func createMessageAttributesFromOutgoingContext(ctx context.Context) map[string]
 	attrs := make(map[string]types.MessageAttributeValue)
 	a := activity.FromOutgoingContext(ctx)
 	if a == nil {
-		logs.FromCtx(ctx).ErrorContext(ctx, "no activity in outgoing context")
+		logs.FromContext(ctx).ErrorContext(ctx, "no activity in outgoing context")
 		return attrs
 	}
 
@@ -80,7 +80,7 @@ func NewIncomingContextFromMessageAttributes(ctx context.Context, attrs map[stri
 		traceID = base62.NewUUIDString()
 	}
 	a.Set(headers.KeyTraceID, traceID)
-	logger := logs.FromCtx(ctx).With(slog.String("trace_id", traceID))
+	logger := logs.FromContext(ctx).With(slog.String("trace_id", traceID))
 	ctx = logs.NewCtx(ctx, logger)
 	return ctx
 }
