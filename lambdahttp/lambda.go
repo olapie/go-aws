@@ -25,9 +25,11 @@ type Router struct {
 	authenticate func(ctx context.Context, accessToken string) (int64, error)
 }
 
-func NewRouter() *Router {
+func NewRouter(verifyAPIKey func(header map[string]string) bool, authenticate func(ctx context.Context, accessToken string) (int64, error)) *Router {
 	return &Router{
-		Router: router.New[Func](),
+		Router:       router.New[Func](),
+		verifyAPIKey: verifyAPIKey,
+		authenticate: authenticate,
 	}
 }
 
