@@ -20,7 +20,6 @@ require (
 	go.olapie.com/ola v0.5.4
 	go.olapie.com/router v1.1.2
 	go.olapie.com/security v0.1.2
-	go.olapie.com/types v1.0.13
 	go.olapie.com/utils v0.4.2
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 )
@@ -43,14 +42,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.18.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/golang/geo v0.0.0-20230421003525-6adc56603217 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/natefinch/lumberjack/v3 v3.0.0-alpha // indirect
-	github.com/nyaruka/phonenumbers v1.1.8 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/shopspring/decimal v1.3.1 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/term v0.11.0 // indirect

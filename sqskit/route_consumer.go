@@ -7,8 +7,8 @@ import (
 	"log/slog"
 
 	"go.olapie.com/logs"
+	"go.olapie.com/ola/errorutil"
 	"go.olapie.com/router"
-	"go.olapie.com/types"
 )
 
 type RoutableMessage struct {
@@ -52,5 +52,5 @@ func (c *RoutableMessageConsumer) HandleMessage(ctx context.Context, rawMessage 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		return handler.Handler()(ctx, message.Body)
 	}
-	return types.NotFound("endpoint not found")
+	return errorutil.NotFound("endpoint not found")
 }

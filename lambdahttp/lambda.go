@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.olapie.com/ola/types"
 	"log/slog"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -12,7 +13,6 @@ import (
 	"go.olapie.com/ola/errorutil"
 	"go.olapie.com/ola/headers"
 	"go.olapie.com/router"
-	"go.olapie.com/types"
 )
 
 type Request = events.APIGatewayV2HTTPRequest
@@ -22,10 +22,10 @@ type Func = router.HandlerFunc[*Request, *Response]
 type Router struct {
 	*router.Router[Func]
 	verifyAPIKey func(header map[string]string) bool
-	authenticate func(ctx context.Context, accessToken string) (int64, error)
+	authenticate func(ctx context.Context, headers map[string]string) types.UserID
 }
 
-func NewRouter(verifyAPIKey func(header map[string]string) bool, authenticate func(ctx context.Context, accessToken string) (int64, error)) *Router {
+func NewRouter(verifyAPIKey func(header map[string]string) bool, authenticate func(ctx context.Context, headers map[string]string) types.UserID) *Router {
 	return &Router{
 		Router:       router.New[Func](),
 		verifyAPIKey: verifyAPIKey,
@@ -75,22 +75,10 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 	}
 
 	if r.authenticate != nil {
-		accessToken := headers.GetBearer(request.Headers)
-		if accessToken == "" {
-			accessToken = headers.GetAuthorization(request.Headers)
-		}
-		if accessToken == "" {
-			logger.Warn("missing access token")
-		} else {
-			uid, err := r.authenticate(ctx, accessToken)
-			if err != nil {
-				Error(errorutil.Unauthorized(err.Error()))
-			}
-
-			if uid > 0 {
-				_ = activity.SetIncomingUserID(ctx, uid)
-				logger.Info("authenticated", slog.Int64("uid", uid))
-			}
+		uid := r.authenticate(ctx, request.Headers)
+		if uid != nil {
+			activity.FromIncomingContext(ctx).SetUserID(uid)
+			logger.Info("authenticated", slog.Any("uid", uid.Value()))
 		}
 	}
 
@@ -100,11 +88,11 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		resp = handler.Handler()(ctx, request)
 		if resp == nil {
-			resp = Error(types.NotImplemented("no response from handler"))
+			resp = Error(errorutil.NotImplemented("no response from handler"))
 		}
 		return resp
 	}
-	return Error(types.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
+	return Error(errorutil.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
 }
 
 func Next(ctx context.Context, request *Request) *Response {
