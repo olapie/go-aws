@@ -77,7 +77,7 @@ func (s *S3Bucket) UploadPart(ctx context.Context, key, uploadID string, part in
 	input := &s3.UploadPartInput{
 		Bucket:     aws.String(s.bucket),
 		Key:        aws.String(key),
-		PartNumber: int32(part),
+		PartNumber: utils.Addr(int32(part)),
 		UploadId:   aws.String(uploadID),
 		Body:       bytes.NewBuffer(content),
 	}
@@ -199,7 +199,7 @@ func (s *S3Bucket) PreSignUploadPart(ctx context.Context, key, uploadID string, 
 	input := &s3.UploadPartInput{
 		Bucket:     aws.String(s.bucket),
 		Key:        aws.String(key),
-		PartNumber: int32(part),
+		PartNumber: utils.Addr(int32(part)),
 		UploadId:   aws.String(uploadID),
 	}
 	for _, fn := range optFns {
