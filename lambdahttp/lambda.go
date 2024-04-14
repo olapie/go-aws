@@ -5,14 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"go.olapie.com/ola/types"
+	"go.olapie.com/x/xcontext"
 	"log/slog"
 
 	"github.com/aws/aws-lambda-go/events"
-	"go.olapie.com/logs"
 	"go.olapie.com/ola/activity"
-	"go.olapie.com/ola/errorutil"
-	"go.olapie.com/ola/headers"
 	"go.olapie.com/router"
+	"go.olapie.com/x/xerror"
+	"go.olapie.com/x/xhttpheader"
+	"go.olapie.com/x/xlog"
 )
 
 type Request = events.APIGatewayV2HTTPRequest
@@ -22,10 +23,10 @@ type Func = router.HandlerFunc[*Request, *Response]
 type Router struct {
 	*router.Router[Func]
 	verifyAPIKey func(ctx context.Context, header map[string]string) bool
-	authenticate func(ctx context.Context, headers map[string]string) types.UserID
+	authenticate func(ctx context.Context, xhttpheader map[string]string) types.UserID
 }
 
-func NewRouter(verifyAPIKey func(ctx context.Context, header map[string]string) bool, authenticate func(ctx context.Context, headers map[string]string) types.UserID) *Router {
+func NewRouter(verifyAPIKey func(ctx context.Context, header map[string]string) bool, authenticate func(ctx context.Context, xhttpheader map[string]string) types.UserID) *Router {
 	return &Router{
 		Router:       router.New[Func](),
 		verifyAPIKey: verifyAPIKey,
@@ -36,7 +37,7 @@ func NewRouter(verifyAPIKey func(ctx context.Context, header map[string]string) 
 func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) {
 	ctx = buildContext(ctx, request)
 	httpInfo := request.RequestContext.HTTP
-	logger := logs.FromContext(ctx)
+	logger := xlog.FromContext(ctx)
 	logger.Info("START",
 		slog.Any("header", request.Headers),
 		slog.String("path", request.RawPath),
@@ -53,7 +54,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 			return
 		}
 
-		logger = logs.FromContext(ctx).With(slog.Int("status_code", resp.StatusCode))
+		logger = xlog.FromContext(ctx).With(slog.Int("status_code", resp.StatusCode))
 		if resp.StatusCode < 400 {
 			logger.Info("End")
 		} else {
@@ -67,17 +68,17 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		if resp.Headers == nil {
 			resp.Headers = make(map[string]string)
 		}
-		resp.Headers[headers.KeyTraceID] = activity.FromIncomingContext(ctx).GetTraceID()
+		resp.Headers[xhttpheader.KeyTraceID] = activity.FromIncomingContext(ctx).GetTraceID()
 	}()
 
 	if r.verifyAPIKey != nil && !r.verifyAPIKey(ctx, request.Headers) {
-		return Error(errorutil.BadRequest("invalid api key"))
+		return Error(xerror.BadRequest("invalid api key"))
 	}
 
 	if r.authenticate != nil {
 		uid := r.authenticate(ctx, request.Headers)
 		if uid != nil {
-			activity.FromIncomingContext(ctx).SetUserID(uid)
+			xcontext.GetIncomingActivity(ctx).SetUserID(uid)
 			logger.Info("authenticated", slog.Any("uid", uid.Value()))
 		}
 	}
@@ -88,11 +89,11 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		ctx = router.WithNextHandler(ctx, handler.Next())
 		resp = handler.Handler()(ctx, request)
 		if resp == nil {
-			resp = Error(errorutil.NotImplemented("no response from handler"))
+			resp = Error(xerror.NotImplemented("no response from handler"))
 		}
 		return resp
 	}
-	return Error(errorutil.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
+	return Error(xerror.NotFound("endpoint not found: %s %s", httpInfo.Method, request.RawPath))
 }
 
 func Next(ctx context.Context, request *Request) *Response {

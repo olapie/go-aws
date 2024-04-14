@@ -1,6 +1,8 @@
 module go.olapie.com/aws/cdk
 
-go 1.20
+go 1.21.0
+
+toolchain go1.22.0
 
 require (
 	github.com/aws/aws-cdk-go/awscdk/v2 v2.90.0
@@ -18,9 +20,11 @@ require (
 	github.com/cdklabs/awscdk-asset-node-proxy-agent-go/nodeproxyagentv5/v2 v2.0.166 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	go.olapie.com/naming v0.3.0 // indirect
+	go.olapie.com/x/xconv v0.1.1 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/term v0.11.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )

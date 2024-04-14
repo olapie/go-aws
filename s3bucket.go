@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
-	"go.olapie.com/utils"
+	"go.olapie.com/x/xconv"
 )
 
 const (
@@ -70,14 +70,14 @@ func (s *S3Bucket) Put(ctx context.Context, key string, content []byte, metadata
 	if err != nil {
 		return "", err
 	}
-	return utils.Dereference(output.ETag), nil
+	return xconv.Dereference(output.ETag), nil
 }
 
 func (s *S3Bucket) UploadPart(ctx context.Context, key, uploadID string, part int, content []byte, optFns ...func(*s3.UploadPartInput)) (*s3.UploadPartOutput, error) {
 	input := &s3.UploadPartInput{
 		Bucket:     aws.String(s.bucket),
 		Key:        aws.String(key),
-		PartNumber: utils.Addr(int32(part)),
+		PartNumber: xconv.Pointer(int32(part)),
 		UploadId:   aws.String(uploadID),
 		Body:       bytes.NewBuffer(content),
 	}
@@ -148,7 +148,7 @@ func (s *S3Bucket) CompleteMultipartUpload(ctx context.Context, key, uploadID st
 	if err != nil {
 		return "", err
 	}
-	return utils.Dereference(output.ETag), nil
+	return xconv.Dereference(output.ETag), nil
 }
 
 func (s *S3Bucket) AbortMultipartUpload(ctx context.Context, key, uploadID string, optFns ...func(*s3.AbortMultipartUploadInput)) error {
@@ -199,7 +199,7 @@ func (s *S3Bucket) PreSignUploadPart(ctx context.Context, key, uploadID string, 
 	input := &s3.UploadPartInput{
 		Bucket:     aws.String(s.bucket),
 		Key:        aws.String(key),
-		PartNumber: utils.Addr(int32(part)),
+		PartNumber: xconv.Pointer(int32(part)),
 		UploadId:   aws.String(uploadID),
 	}
 	for _, fn := range optFns {
@@ -295,7 +295,7 @@ func (s *S3Bucket) BatchDelete(ctx context.Context, ids []string, optFns ...func
 	}
 
 	if len(output.Deleted) != len(ids) {
-		idSet := utils.SliceToSet(ids)
+		idSet := xconv.SliceToSet(ids)
 		for _, del := range output.Deleted {
 			delete(idSet, *del.Key)
 		}

@@ -3,6 +3,7 @@ package ddb
 import (
 	"context"
 	"fmt"
+	"go.olapie.com/x/xconv"
 	"reflect"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -11,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	goaws "go.olapie.com/aws"
-	"go.olapie.com/utils"
 )
 
 type TableOption[E any, P PartitionKeyConstraint, S SortKeyConstraint] func(t *Table[E, P, S])
@@ -52,7 +52,7 @@ func NewTable[E any, P PartitionKeyConstraint, S SortKeyConstraint](
 	}
 
 	var elem E
-	attrs, err := attributevalue.MarshalMap(utils.DeepNew(reflect.TypeOf(elem)).Elem().Interface())
+	attrs, err := attributevalue.MarshalMap(xconv.DeepNew(reflect.TypeOf(elem)).Elem().Interface())
 	if err != nil {
 		panic(err)
 	}

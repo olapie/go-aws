@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"go.olapie.com/logs"
+	"go.olapie.com/x/xlog"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -52,7 +52,7 @@ func (c *MessageProducer) getQueueURL(ctx context.Context, retries int) {
 			c.queueURL = output.QueueUrl
 			break
 		}
-		logs.FromContext(ctx).Error("get queue url", logs.Err(err))
+		xlog.FromContext(ctx).Error("get queue url", xlog.Err(err))
 	}
 }
 

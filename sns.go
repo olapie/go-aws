@@ -7,7 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
-	"go.olapie.com/utils"
+	"go.olapie.com/x/xconv"
 )
 
 type SNS struct {
@@ -22,8 +22,8 @@ func NewSNS(cfg aws.Config) *SNS {
 
 func (s *SNS) SendMobileMessage(ctx context.Context, recipient string, message string, optFns ...func(*sns.Options)) (string, error) {
 	input := &sns.PublishInput{
-		Message:     utils.Addr(message),
-		PhoneNumber: utils.Addr(recipient),
+		Message:     xconv.Pointer(message),
+		PhoneNumber: xconv.Pointer(recipient),
 	}
 	output, err := s.c.Publish(ctx, input, optFns...)
 	if err != nil {
