@@ -3,7 +3,7 @@ package ddb
 import (
 	"context"
 	"fmt"
-	"go.olapie.com/x/xconv"
+	"go.olapie.com/x/xreflect"
 	"reflect"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -52,7 +52,7 @@ func NewTable[E any, P PartitionKeyConstraint, S SortKeyConstraint](
 	}
 
 	var elem E
-	attrs, err := attributevalue.MarshalMap(xconv.DeepNew(reflect.TypeOf(elem)).Elem().Interface())
+	attrs, err := attributevalue.MarshalMap(xreflect.DeepNew(reflect.TypeOf(elem)).Elem().Interface())
 	if err != nil {
 		panic(err)
 	}
