@@ -4,16 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.olapie.com/ola/types"
-	"go.olapie.com/x/xcontext"
 	"log/slog"
 
 	"github.com/aws/aws-lambda-go/events"
-	"go.olapie.com/ola/activity"
 	"go.olapie.com/router"
+	"go.olapie.com/x/xcontext"
 	"go.olapie.com/x/xerror"
 	"go.olapie.com/x/xhttpheader"
 	"go.olapie.com/x/xlog"
+	"go.olapie.com/x/xtype"
 )
 
 type Request = events.APIGatewayV2HTTPRequest
@@ -23,10 +22,10 @@ type Func = router.HandlerFunc[*Request, *Response]
 type Router struct {
 	*router.Router[Func]
 	verifyAPIKey func(ctx context.Context, header map[string]string) bool
-	authenticate func(ctx context.Context, xhttpheader map[string]string) types.UserID
+	authenticate func(ctx context.Context, header map[string]string) *xtype.AuthResult
 }
 
-func NewRouter(verifyAPIKey func(ctx context.Context, header map[string]string) bool, authenticate func(ctx context.Context, xhttpheader map[string]string) types.UserID) *Router {
+func NewRouter(verifyAPIKey func(ctx context.Context, header map[string]string) bool, authenticate func(ctx context.Context, header map[string]string) *xtype.AuthResult) *Router {
 	return &Router{
 		Router:       router.New[Func](),
 		verifyAPIKey: verifyAPIKey,
@@ -68,7 +67,7 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 		if resp.Headers == nil {
 			resp.Headers = make(map[string]string)
 		}
-		resp.Headers[xhttpheader.KeyTraceID] = activity.FromIncomingContext(ctx).GetTraceID()
+		resp.Headers[xhttpheader.KeyTraceID] = xcontext.GetIncomingActivity(ctx).GetTraceID()
 	}()
 
 	if r.verifyAPIKey != nil && !r.verifyAPIKey(ctx, request.Headers) {
@@ -76,10 +75,10 @@ func (r *Router) Handle(ctx context.Context, request *Request) (resp *Response) 
 	}
 
 	if r.authenticate != nil {
-		uid := r.authenticate(ctx, request.Headers)
-		if uid != nil {
-			xcontext.GetIncomingActivity(ctx).SetUserID(uid)
-			logger.Info("authenticated", slog.Any("uid", uid.Value()))
+		res := r.authenticate(ctx, request.Headers)
+		if res != nil {
+			xcontext.GetIncomingActivity(ctx).SetUserID(res.UserID)
+			logger.Info("authenticated", slog.Any("uid", res.UserID))
 		}
 	}
 
