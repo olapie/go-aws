@@ -1,6 +1,6 @@
 module go.olapie.com/aws
 
-go 1.22.0
+go 1.24.0
 
 require (
 	github.com/aws/aws-lambda-go v1.47.0
@@ -17,15 +17,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.8.1
 	go.olapie.com/router v1.1.2
-	go.olapie.com/x/xbase62 v0.1.1
-	go.olapie.com/x/xcontext v0.1.4
-	go.olapie.com/x/xconv v0.1.4
-	go.olapie.com/x/xerror v0.1.4
-	go.olapie.com/x/xhttpheader v0.1.1
-	go.olapie.com/x/xlog v0.1.2
-	go.olapie.com/x/xmime v0.1.0
-	go.olapie.com/x/xreflect v0.1.0
-	go.olapie.com/x/xtype v0.3.1
+	go.olapie.com/x v0.1.2
 	golang.org/x/exp v0.0.0-20240530194437-404ba88c7ed0
 )
 
@@ -49,8 +41,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	go.olapie.com/naming v0.3.0 // indirect
-	go.olapie.com/x/xsession v0.1.1 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	go.olapie.com/naming v0.3.1 // indirect
+	golang.org/x/text v0.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
