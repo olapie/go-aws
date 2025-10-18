@@ -16,11 +16,9 @@ github.com/cdklabs/awscdk-asset-kubectl-go/kubectlv20/v2 v2.1.2 h1:k+WD+6cERd59M
 github.com/cdklabs/awscdk-asset-kubectl-go/kubectlv20/v2 v2.1.2/go.mod h1:CvFHBo0qcg8LUkJqIxQtP1rD/sNGv9bX3L2vHT2FUAo=
 github.com/cdklabs/awscdk-asset-node-proxy-agent-go/nodeproxyagentv6/v2 v2.0.3 h1:8NLWOIVaxAtpUXv5reojlAeDP7R8yswm9mDONf7F/3o=
 github.com/cdklabs/awscdk-asset-node-proxy-agent-go/nodeproxyagentv6/v2 v2.0.3/go.mod h1:ZjFqfhYpCLzh4z7ChcHCrkXfqCuEiRlNApDfJd6plts=
-go.olapie.com/naming v0.3.0 h1:RbECxGQsYJzjYaWYhxXL1mesqmbyvQmHu/GJmhbauUQ=
-go.olapie.com/naming v0.3.0/go.mod h1:dpA2OFjxkysG5ZxlqlzEsybisd2qxsgxOdXYiLm0wS8=
-go.olapie.com/x/xconv v0.1.4 h1:U1kI2jCIw5/+Vju/tczazJDZqsQwf45vKRnjmXagF/8=
-go.olapie.com/x/xconv v0.1.4/go.mod h1:Ie8BkWhBM/swD8UU9tJspV9rz96q5YOCoE0/l/BmivM=
-go.olapie.com/x/xreflect v0.1.0 h1:Vls4UpQuj6AVbTW3BqRWBAzvH3Cj3fxsz+q9IxxipVY=
-go.olapie.com/x/xreflect v0.1.0/go.mod h1:UspKpQ99/UWVEqbfmyT1syN+DzuKpTJjHVtMv+y2HhA=
-golang.org/x/text v0.15.0 h1:h1V/4gjBv8v9cjcR6+AR5+/cIYK5N/WAgiv4xlsEtAk=
-golang.org/x/text v0.15.0/go.mod h1:18ZOQIKpY8NJVqYksKHtTdi31H5itFRjB5/qKTNYzSU=
+go.olapie.com/naming v0.3.1 h1:d92sRWC86O+uqER2gMRuAYue18gyloUd92RzXMS7Jro=
+go.olapie.com/naming v0.3.1/go.mod h1:U28uBvhVUtJ1sr7SDG+r8AiOqgYosQyNAs7FyBpTU+Q=
+go.olapie.com/x v0.1.2 h1:kkqBKnLd0f9U4sflfvq6+8nNnul3owcoCxUrI5dyRa4=
+go.olapie.com/x v0.1.2/go.mod h1:7o2wqQSSxiVyNB7RXpP3d+nhuO3x67nsQ13x/9vlkqg=
+golang.org/x/text v0.30.0 h1:yznKA/E9zq54KzlzBEAWn1NXSQ8DIp/NYMy88xJjl4k=
+golang.org/x/text v0.30.0/go.mod h1:yDdHFIX9t+tORqspjENWgzaCVXgk0yYnYuSZ8UzzBVM=
