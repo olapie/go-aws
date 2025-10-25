@@ -2,9 +2,10 @@ package cdk
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"go.olapie.com/naming"
-	"strings"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"

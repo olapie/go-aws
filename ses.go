@@ -30,6 +30,11 @@ func NewSES(cfg aws.Config) *SES {
 	}
 }
 
+func (s *SES) CheckConnection(ctx context.Context) error {
+	_, err := s.c.ListIdentities(ctx, &ses.ListIdentitiesInput{})
+	return err
+}
+
 func (s *SES) Send(ctx context.Context, email *Email) (string, error) {
 	if email.From == "" {
 		return "", errors.New("missing From")

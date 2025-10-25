@@ -7,10 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"go.olapie.com/x/xerror"
-
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.olapie.com/x/xerror"
 )
 
 func setupS3Bucket(t *testing.T) *S3Bucket {

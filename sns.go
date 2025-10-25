@@ -20,6 +20,11 @@ func NewSNS(cfg aws.Config) *SNS {
 	}
 }
 
+func (s *SNS) CheckConnection(ctx context.Context) error {
+	_, err := s.c.ListTopics(ctx, &sns.ListTopicsInput{})
+	return err
+}
+
 func (s *SNS) SendMobileMessage(ctx context.Context, recipient string, message string, optFns ...func(*sns.Options)) (string, error) {
 	input := &sns.PublishInput{
 		Message:     xconv.Pointer(message),
